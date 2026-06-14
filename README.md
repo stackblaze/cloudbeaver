@@ -12,7 +12,7 @@ It is free to use and open-source (licensed under [Apache 2](https://github.com/
 <img src="https://github.com/dbeaver/cloudbeaver/wiki/images/sql-editor-demo.png" width="400"/>
 
 ## Documentation
-- [Community version WIKI](https://github.com/dbeaver/cloudbeaver/wiki)
+- [GitHub WIKI](https://github.com/dbeaver/cloudbeaver/wiki)
 - [Official documentation](https://dbeaver.com/docs/cloudbeaver/)
 
 ## Run in Docker
