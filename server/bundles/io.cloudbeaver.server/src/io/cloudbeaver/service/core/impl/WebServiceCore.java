@@ -45,6 +45,7 @@ import org.jkiss.dbeaver.model.app.DBPDataSourceRegistry;
 import org.jkiss.dbeaver.model.app.DBPProject;
 import org.jkiss.dbeaver.model.auth.SMObjectType;
 import org.jkiss.dbeaver.model.connection.DBPConnectionConfiguration;
+import org.jkiss.dbeaver.model.connection.DBPConnectionType;
 import org.jkiss.dbeaver.model.connection.DBPDriver;
 import org.jkiss.dbeaver.model.exec.DBCConnectException;
 import org.jkiss.dbeaver.model.navigator.DBNDataSource;
@@ -325,6 +326,15 @@ public class WebServiceCore implements DBWServiceCore {
             return new WebPropertyInfo[0];
         }
 
+    }
+
+    @NotNull
+    @Override
+    public List<DBPConnectionType> getConnectionTypes(@NotNull WebSession webSession, @Nullable String id) {
+        return DataSourceProviderRegistry.getInstance().getConnectionTypes().stream()
+            .map(ct -> id == null || id.equals(ct.getId()) ? ct : null)
+            .filter(Objects::nonNull)
+            .toList();
     }
 
 
