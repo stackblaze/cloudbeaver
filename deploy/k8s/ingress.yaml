@@ -1,3 +1,12 @@
+# OPTIONAL — do NOT apply for the communal Stackblaze model.
+# All user access must go through Kubero Access → https://api.stackblaze.cloud/cb
+# (reverse-proxy auth + per-addon connection ACL).
+#
+# A public Ingress would let anyone reach the CloudBeaver login page and
+# bypass Kubero's scoped handoff. Keep CloudBeaver ClusterIP-only.
+#
+# Apply only for break-glass admin debugging:
+#   kubectl apply -f deploy/k8s/ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -5,6 +14,8 @@ metadata:
   namespace: cloudbeaver
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Document intent — prefer deleting this Ingress in prod.
+    kubero.dev/access-model: break-glass-only
 spec:
   ingressClassName: traefik
   tls:

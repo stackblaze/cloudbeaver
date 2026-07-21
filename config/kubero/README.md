@@ -1,25 +1,41 @@
-# Kubero / Stackblaze CloudBeaver profile
+# Stackblaze communal CloudBeaver
 
-Deploy CloudBeaver with this config (or merge its `app` / `server` keys into your runtime `cloudbeaver.conf`) for addon Access sessions.
+One shared CloudBeaver instance for **all Stackblaze users**. It is not a
+per-addon deploy and not a public self-serve login.
 
-## Required settings
+## Access model
 
-| Setting | Purpose |
-|---------|---------|
-| `enabledAuthProviders: ["reverseProxy"]` | Auto-login via `X-User` (no login form) |
-| `supportsCustomConnections: false` | Users cannot add arbitrary databases |
-| `enabledDrivers` | Postgres + MariaDB/MySQL only |
-| `rootURI` / `serviceURI` under `/cb/` | Same-origin proxy from Kubero |
+```
+User (Kubero UI) → Access tab → Open database
+  → POST /api/apps/.../db/cloudbeaver/session
+  → Kubero provisions CB connection + ACL for that user + addon only
+  → one-time handoff → https://api.stackblaze.cloud/cb
+  → Kubero proxy injects X-User → CloudBeaver reverseProxy login
+  → Navigator shows only granted connection(s)
+```
 
-## Reverse-proxy headers
+| Concern | Rule |
+|---------|------|
+| Who can open | Authenticated Kubero users with `app:read` on the addon |
+| What they see | Only connections Kubero granted for their identity |
+| Entry URL | `https://api.stackblaze.cloud/cb` (via handoff) — **not** a public Ingress |
+| Credentials | Addon Secret (same as `/db/access`); no user paste into Adminer |
 
-Kubero's `/cb` proxy injects:
+## Deploy
 
-- `X-User` — Kubero username / stable subject id
-- `X-Team` — optional team id
+- Image: `ghcr.io/stackblaze/cloudbeaver`
+- Namespace: `cloudbeaver` (ClusterIP only)
+- Kubero env (helm `cloudbeaver.enabled`): `CLOUDBEAVER_INTERNAL_URL`,
+  `CLOUDBEAVER_ADMIN_*`, `CLOUDBEAVER_PUBLIC_PATH=/cb`
 
-Do **not** expose CloudBeaver directly to the internet without stripping client-supplied `X-User` / `X-Team`.
+Do **not** expose CloudBeaver with a public Ingress in prod — that bypasses
+scoped handoff and risks cross-tenant visibility for admin logins.
 
-## Kubero env
+## Config profile
 
-See `kubero/server/.env.template` for `CLOUDBEAVER_*` variables used by the session handoff service.
+[`cloudbeaver.conf`](./cloudbeaver.conf) / [`deploy/k8s/cloudbeaver.conf`](../../deploy/k8s/cloudbeaver.conf):
+
+- `reverseProxy` + `local` auth
+- `supportsCustomConnections: false`
+- Drivers: Postgres + MariaDB/MySQL only
+- Anonymous access off

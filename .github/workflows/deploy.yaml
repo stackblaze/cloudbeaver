@@ -124,7 +124,8 @@ jobs:
           set -euo pipefail
           kubectl apply -f deploy/k8s/namespace.yaml
           kubectl apply -f deploy/k8s/deployment.yaml
-          kubectl apply -f deploy/k8s/ingress.yaml
+          # No public Ingress — communal Access is Kubero /cb only.
+          kubectl -n "${NAMESPACE}" delete ingress cloudbeaver --ignore-not-found
           kubectl -n "${NAMESPACE}" patch deployment "${DEPLOYMENT}" --type=strategic \
             -p "{\"spec\":{\"template\":{\"spec\":{\"imagePullSecrets\":[{\"name\":\"ghcr-pull\"}],\"containers\":[{\"name\":\"cloudbeaver\",\"image\":\"ghcr.io/${IMAGE_NAME}:${TAG}\"}]}}}}"
           kubectl -n "${NAMESPACE}" rollout status deploy/"${DEPLOYMENT}" --timeout=600s
