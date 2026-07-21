@@ -8,5 +8,3 @@ USER root
 COPY deploy/k8s/cloudbeaver.conf /opt/cloudbeaver/conf/cloudbeaver.conf
 RUN chown dbeaver:dbeaver /opt/cloudbeaver/conf/cloudbeaver.conf || true
 USER dbeaver
-
-ENV CLOUDBEAVER_SERVER_NAME="Stackblaze Database"
