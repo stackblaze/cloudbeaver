@@ -8,21 +8,22 @@
 
 @layer base {
   .theme-dark {
-    --theme-primary: #2a7cb4;
+    /* Stackblaze / Kubero-aligned palette */
+    --theme-primary: #6b26d9;
     --theme-on-primary: #ffffff;
-    --theme-secondary: hsl(240, 10%, 11%);
+    --theme-secondary: #1e1e1e;
     --theme-on-secondary: #d6d6d6;
     --theme-error: #e94948;
-    --theme-surface: hsl(240, 10%, 14%);
+    --theme-surface: #252526;
     --theme-on-surface: #ffffff;
-    --theme-background: hsl(240, 10%, 25%);
-    --theme-sub-secondary: hsl(240, 10%, 18%);
+    --theme-background: #1e1e1e;
+    --theme-sub-secondary: #2a2a2a;
     --theme-on-sub-secondary: #cbcbcb;
     --theme-positive: #52c41a;
     --theme-on-positive: #ffffff;
     --theme-negative: hsl(0, 95%, 65%);
     --theme-status: #f5bb41;
     --theme-link-color: oklch(from var(--theme-primary) calc(l + 0.09) c h);
-    --theme-link-color-focus: #3f96d1;
+    --theme-link-color-focus: #8b5cf6;
   }
 }

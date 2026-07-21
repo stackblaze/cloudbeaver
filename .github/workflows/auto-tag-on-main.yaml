@@ -1,0 +1,45 @@
+name: Auto-tag on push to main
+
+on:
+  push:
+    branches: [main, devel]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+jobs:
+  tag:
+    runs-on: [self-hosted, cloudbeaver]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.CHAIN_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Compute next sb.N tag
+        id: next
+        run: |
+          set -euo pipefail
+          latest=$(git tag --list 'v*.*.*-sb.*' | sort -V | tail -1 || true)
+          if [ -z "$latest" ]; then
+            # Bootstrap base if none exists yet.
+            next="v25.2.0-sb.1"
+          else
+            base="${latest%-sb.*}"
+            n="${latest##*-sb.}"
+            next_n=$((n + 1))
+            next="${base}-sb.${next_n}"
+          fi
+          echo "Latest: ${latest:-none} → next: $next"
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Push tag
+        env:
+          GH_TOKEN: ${{ secrets.CHAIN_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag '${{ steps.next.outputs.tag }}'
+          git push origin '${{ steps.next.outputs.tag }}'

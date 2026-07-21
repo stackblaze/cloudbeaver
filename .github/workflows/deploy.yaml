@@ -1,0 +1,135 @@
+name: Deploy to prod cluster
+
+# release.published (from docker-release) or manual → kubectl apply on kubero-prod
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag to deploy (default: latest published release)'
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: stackblaze/cloudbeaver
+  NAMESPACE: cloudbeaver
+  DEPLOYMENT: cloudbeaver
+
+concurrency:
+  group: deploy-kubero-prod-cloudbeaver
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, cloudbeaver]
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: production-kubero-prod
+      url: https://db.stackblaze.cloud
+    steps:
+      - name: Check out manifests
+        uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag='${{ github.event.release.tag_name }}'
+          elif [ -n '${{ inputs.tag }}' ]; then
+            tag='${{ inputs.tag }}'
+          else
+            tag=$(gh release view --repo "${{ github.repository }}" --json tagName --jq .tagName)
+          fi
+          echo "value=$tag" >> "$GITHUB_OUTPUT"
+          echo "Deploying tag: $tag"
+
+      - name: Verify image is on GHCR
+        env:
+          GH_USER: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+          basic=$(printf '%s:%s' "$GH_USER" "$GH_TOKEN" | base64 | tr -d '\n')
+          token=$(curl -fsSL \
+            -H "Authorization: Basic $basic" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:${IMAGE_NAME}:pull" \
+            | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+          tries=0
+          until [ "$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer $token" \
+              -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
+              -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
+              -H 'Accept: application/vnd.oci.image.index.v1+json' \
+              "https://ghcr.io/v2/${IMAGE_NAME}/manifests/$TAG")" = "200" ]; do
+            tries=$((tries + 1))
+            if [ "$tries" -ge 30 ]; then
+              echo "::error::Image ghcr.io/${IMAGE_NAME}:$TAG not found after 5 minutes"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Image confirmed: ghcr.io/${IMAGE_NAME}:$TAG"
+
+      - name: Ensure kubectl
+        run: |
+          set -euo pipefail
+          BIN="$HOME/.local/bin"
+          mkdir -p "$BIN"
+          echo "$BIN" >> "$GITHUB_PATH"
+          export PATH="$BIN:$PATH"
+          if ! command -v kubectl >/dev/null 2>&1; then
+            curl -fsSL -o "$BIN/kubectl" \
+              "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x "$BIN/kubectl"
+          fi
+          kubectl version --client=true 2>/dev/null || kubectl version --client || true
+
+      - name: Restore kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KUBECONFIG_B64:-}" ]; then
+            echo "::error::Environment secret KUBECONFIG_B64 is missing"
+            exit 1
+          fi
+          mkdir -p "$HOME/.kube"
+          printf '%s' "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Ensure ghcr pull secret
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ secrets.GHCR_PULL_USER || github.repository_owner }}
+        run: |
+          set -euo pipefail
+          kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "${NAMESPACE}" create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_USER" \
+            --docker-password="$GHCR_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply manifests + set image
+        env:
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+          kubectl apply -f deploy/k8s/namespace.yaml
+          kubectl apply -f deploy/k8s/deployment.yaml
+          kubectl apply -f deploy/k8s/ingress.yaml
+          kubectl -n "${NAMESPACE}" patch deployment "${DEPLOYMENT}" --type=strategic \
+            -p "{\"spec\":{\"template\":{\"spec\":{\"imagePullSecrets\":[{\"name\":\"ghcr-pull\"}],\"containers\":[{\"name\":\"cloudbeaver\",\"image\":\"ghcr.io/${IMAGE_NAME}:${TAG}\"}]}}}}"
+          kubectl -n "${NAMESPACE}" rollout status deploy/"${DEPLOYMENT}" --timeout=600s
+
+      - name: Show status
+        if: always()
+        run: |
+          kubectl -n "${NAMESPACE}" get pods,ingress,svc -o wide || true

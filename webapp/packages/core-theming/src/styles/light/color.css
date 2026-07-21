@@ -8,14 +8,15 @@
 
 @layer base {
   .theme-light {
-    --theme-primary: #2a7cb4;
+    /* Stackblaze / Kubero-aligned palette */
+    --theme-primary: #5d54a4;
     --theme-on-primary: #ffffff;
-    --theme-secondary: #f2f2f2;
+    --theme-secondary: #f0f0f3;
     --theme-on-secondary: #4d4d4d;
     --theme-error: #e94948;
     --theme-surface: #ffffff;
     --theme-on-surface: #353535;
-    --theme-background: #dedede;
+    --theme-background: #f0f0f3;
     --theme-sub-secondary: #f8f8f8;
     --theme-on-sub-secondary: #4d4d4d;
     --theme-positive: #52c41a;
@@ -23,6 +24,6 @@
     --theme-negative: #e73e52;
     --theme-status: #fab31a;
     --theme-link-color: var(--theme-primary);
-    --theme-link-color-focus: #3f96d1;
+    --theme-link-color-focus: #6b26d9;
   }
 }
