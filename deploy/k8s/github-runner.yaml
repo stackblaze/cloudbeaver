@@ -62,9 +62,14 @@ spec:
               value: repo
             - name: LABELS
               value: self-hosted,cloudbeaver,Linux,X64
+            # Must be unset/false — image defaults can force one-shot runners.
             - name: EPHEMERAL
               value: "false"
+            - name: RUNNER_FEATURE_FLAG_EPHEMERAL
+              value: "false"
             - name: DISABLE_AUTO_UPDATE
+              value: "false"
+            - name: START_DOCKER_SERVICE
               value: "false"
             - name: ACCESS_TOKEN
               valueFrom:
