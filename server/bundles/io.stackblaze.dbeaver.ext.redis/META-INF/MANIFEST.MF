@@ -6,6 +6,7 @@ Bundle-SymbolicName: io.stackblaze.dbeaver.ext.redis;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
+Bundle-Localization: OSGI-INF/l10n/bundle
 Bundle-ClassPath: .,
  lib/jedis.jar,
  lib/commons-pool2.jar,
