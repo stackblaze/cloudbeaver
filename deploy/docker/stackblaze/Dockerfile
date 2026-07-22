@@ -7,7 +7,7 @@
 #   /src/dbeaver, /src/dbeaver-common, /src/cloudbeaver
 
 ARG JAVA_IMAGE=eclipse-temurin:21-jdk-noble
-ARG NODE_VERSION=20
+ARG NODE_VERSION=24
 ARG MAVEN_VERSION=3.9.16
 ARG DBEAVER_REF=devel
 ARG DBEAVER_COMMON_REF=devel

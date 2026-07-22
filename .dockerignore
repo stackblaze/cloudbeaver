@@ -5,8 +5,11 @@
 **/node_modules
 **/target
 **/.idea
+# Built package outputs — but keep vendored react-data-grid artifacts/lib
+# (yarn.lock pins file:./artifacts by content hash; excluding lib breaks --immutable).
 **/lib
-webapp/**/lib
+!webapp/common-react/@dbeaver/react-data-grid/artifacts/
+!webapp/common-react/@dbeaver/react-data-grid/artifacts/**
 webapp/**/node_modules
 deploy/cloudbeaver
 deploy/drivers
