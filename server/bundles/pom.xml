@@ -31,6 +31,7 @@
         <module>io.cloudbeaver.service.ldap.auth</module>
 
         <module>io.cloudbeaver.resources.drivers.base</module>
+        <module>io.stackblaze.dbeaver.ext.redis</module>
 
         <module>io.cloudbeaver.product.ce</module>
     </modules>

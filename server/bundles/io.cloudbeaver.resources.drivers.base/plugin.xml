@@ -21,6 +21,7 @@
         <resource name="drivers/trino"/>
         <resource name="drivers/kyuubi"/>
         <resource name="drivers/databend"/>
+        <resource name="drivers/redis"/>
     </extension>
 
     <!-- Bundles  -->
@@ -44,6 +45,7 @@
         <bundle id="drivers.trino" label="Trino drivers"/>
         <bundle id="drivers.kyuubi" label="Apache Kyuubi drivers"/>
         <bundle id="drivers.databend" label="Databend drivers"/>
+        <bundle id="drivers.redis" label="Redis / Valkey drivers"/>
     </extension>
 
     <!-- Enabled drivers -->
@@ -67,6 +69,7 @@
         <driver id="duckdb:duckdb_jdbc"/>
         <driver id="generic:kyuubi_hive"/>
         <driver id="databend:databend"/>
+        <driver id="redis:redis"/>
     </extension>
 
 

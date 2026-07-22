@@ -1,0 +1,15 @@
+.git
+.github
+.vscode
+**/.git
+**/node_modules
+**/target
+**/.idea
+**/lib
+webapp/**/lib
+webapp/**/node_modules
+deploy/cloudbeaver
+deploy/drivers
+docs
+*.md
+!server/bundles/io.stackblaze.dbeaver.ext.redis/README.md
