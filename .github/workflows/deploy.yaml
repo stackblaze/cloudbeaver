@@ -133,4 +133,14 @@ jobs:
       - name: Show status
         if: always()
         run: |
+          set -uo pipefail
           kubectl -n "${NAMESPACE}" get pods,ingress,svc -o wide || true
+          kubectl -n "${NAMESPACE}" describe deploy/"${DEPLOYMENT}" || true
+          for pod in $(kubectl -n "${NAMESPACE}" get pods -l app=cloudbeaver -o name 2>/dev/null); do
+            echo "===== describe $pod ====="
+            kubectl -n "${NAMESPACE}" describe "$pod" || true
+            echo "===== logs $pod (current) ====="
+            kubectl -n "${NAMESPACE}" logs "$pod" --tail=200 || true
+            echo "===== logs $pod (previous) ====="
+            kubectl -n "${NAMESPACE}" logs "$pod" --previous --tail=200 || true
+          done
