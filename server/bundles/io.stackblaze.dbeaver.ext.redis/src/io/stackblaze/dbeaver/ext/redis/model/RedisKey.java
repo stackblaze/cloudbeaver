@@ -172,10 +172,12 @@ public class RedisKey implements DBSObject, DBSDataContainer {
             }
 
             dataReceiver.fetchStart(session, resultSet, firstRow, maxRows);
+            long rowsFetched = 0;
             while (resultSet.nextRow()) {
                 dataReceiver.fetchRow(session, resultSet);
-                stats.addRowsFetched(1);
+                rowsFetched++;
             }
+            stats.setRowsFetched(rowsFetched);
             dataReceiver.fetchEnd(session, resultSet);
         } catch (DBException e) {
             throw e;

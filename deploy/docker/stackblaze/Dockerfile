@@ -10,6 +10,8 @@ ARG JAVA_IMAGE=eclipse-temurin:21-jdk-noble
 ARG NODE_VERSION=20
 ARG DBEAVER_REF=devel
 ARG DBEAVER_COMMON_REF=devel
+# Must be global (before first FROM) so stage-2 FROM can resolve it.
+ARG BASE_JAVA_TAG=stable
 
 # ---------- Stage 1: build server (Maven/Tycho) + webapp (Yarn) ----------
 FROM ${JAVA_IMAGE} AS build
@@ -52,7 +54,7 @@ RUN chmod +x ./build-frontend.sh \
  && ./build-frontend.sh
 
 # ---------- Stage 2: runtime image ----------
-ARG BASE_JAVA_TAG=stable
+ARG BASE_JAVA_TAG
 FROM dbeaver/base-java:${BASE_JAVA_TAG}
 
 ENV DBEAVER_GID=8978 \
