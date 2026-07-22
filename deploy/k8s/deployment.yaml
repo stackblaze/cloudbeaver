@@ -24,7 +24,7 @@ data:
             serverName: "Stackblaze Database",
             contentRoot: "web",
             driversLocation: "drivers",
-            rootURI: "/",
+            rootURI: "/cb",
             serviceURI: "/api/",
             productSettings: {
                 "core.theming.theme": "light"
@@ -58,7 +58,8 @@ data:
             enabledDrivers: [
                 "postgresql:postgres-jdbc",
                 "mysql:mariaDB",
-                "mysql:mysql8"
+                "mysql:mysql8",
+                "redis:redis"
             ],
             resourceQuotas: {
                 dataExportFileSizeLimit: 10000000,
@@ -114,14 +115,14 @@ spec:
               memory: 3Gi
           readinessProbe:
             httpGet:
-              path: /
+              path: /cb/
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 12
           livenessProbe:
             httpGet:
-              path: /
+              path: /cb/
               port: http
             initialDelaySeconds: 60
             periodSeconds: 30

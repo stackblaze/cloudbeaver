@@ -62,15 +62,12 @@ spec:
               value: repo
             - name: LABELS
               value: self-hosted,cloudbeaver,Linux,X64
-            # Must be unset/false — image defaults can force one-shot runners.
-            - name: EPHEMERAL
-              value: "false"
-            - name: RUNNER_FEATURE_FLAG_EPHEMERAL
-              value: "false"
-            - name: DISABLE_AUTO_UPDATE
-              value: "false"
+            # myoung34 entrypoint: any non-empty EPHEMERAL/DISABLE_AUTO_UPDATE
+            # enables the flag (even "false"). Leave them unset for reusable runners.
             - name: START_DOCKER_SERVICE
               value: "false"
+            - name: DISABLE_AUTOMATIC_DEREGISTRATION
+              value: "true"
             - name: ACCESS_TOKEN
               valueFrom:
                 secretKeyRef:

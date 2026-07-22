@@ -1,0 +1,19 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Stackblaze Redis/Valkey Driver
+Bundle-Vendor: Stackblaze
+Bundle-SymbolicName: io.stackblaze.dbeaver.ext.redis;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .,
+ lib/jedis.jar,
+ lib/commons-pool2.jar,
+ lib/slf4j-api.jar,
+ lib/json.jar
+Require-Bundle: org.jkiss.dbeaver.model;visibility:=reexport,
+ org.jkiss.dbeaver.model.sql;visibility:=reexport,
+ org.jkiss.dbeaver.registry;visibility:=reexport
+Export-Package: io.stackblaze.dbeaver.ext.redis,
+ io.stackblaze.dbeaver.ext.redis.model
+Automatic-Module-Name: io.stackblaze.dbeaver.ext.redis

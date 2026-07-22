@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+    <extension point="org.jkiss.dbeaver.dataSourceProvider">
+        <datasource
+                class="io.stackblaze.dbeaver.ext.redis.RedisDataSourceProvider"
+                description="Native Redis / Valkey connector (Stackblaze)"
+                id="redis"
+                label="Redis"
+                icon="icons/redis_icon.png"
+                dialect="redis">
+
+            <tree path="redis" label="Redis data source">
+                <items label="Database" path="database" property="databases" icon="#database">
+                    <items label="Key" path="key" property="keys" icon="#table">
+                    </items>
+                </items>
+            </tree>
+
+            <drivers managable="true">
+                <driver
+                        id="redis"
+                        label="Redis"
+                        icon="icons/redis_icon.png"
+                        iconBig="icons/redis_icon_big.png"
+                        category="NoSQL"
+                        description="Native Redis / Valkey (Jedis)"
+                        categories="nosql,redis,valkey"
+                        webURL="https://redis.io/"
+                        defaultPort="6379"
+                        defaultDatabase="0"
+                        defaultUser=""
+                        sampleURL="redis://{host}:{port}/{database}"
+                        supportedConfigurationTypes="MANUAL,URL"
+                        promotesSingleConnection="true">
+                    <file type="jar" path="maven:/redis.clients:jedis:RELEASE[5.2.0]" bundle="!drivers.redis"/>
+                    <file type="jar" path="drivers/redis" bundle="drivers.redis"/>
+                    <parameter name="supports-references" value="false"/>
+                    <parameter name="supports-indexes" value="false"/>
+                    <parameter name="supports-stored-code" value="false"/>
+                </driver>
+            </drivers>
+        </datasource>
+    </extension>
+
+    <extension point="org.jkiss.dbeaver.sqlDialect">
+        <dialect
+                id="redis"
+                label="Redis"
+                class="io.stackblaze.dbeaver.ext.redis.model.RedisSQLDialect"
+                description="Redis / Valkey (command browsing)"
+                icon="icons/redis_icon.png"/>
+    </extension>
+</plugin>
