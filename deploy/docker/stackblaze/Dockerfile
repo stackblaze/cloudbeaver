@@ -8,6 +8,7 @@
 
 ARG JAVA_IMAGE=eclipse-temurin:21-jdk-noble
 ARG NODE_VERSION=20
+ARG MAVEN_VERSION=3.9.16
 ARG DBEAVER_REF=devel
 ARG DBEAVER_COMMON_REF=devel
 # Must be global (before first FROM) so stage-2 FROM can resolve it.
@@ -17,19 +18,25 @@ ARG BASE_JAVA_TAG=stable
 FROM ${JAVA_IMAGE} AS build
 
 ARG NODE_VERSION
+ARG MAVEN_VERSION
 ARG DBEAVER_REF
 ARG DBEAVER_COMMON_REF
 
 ENV DEBIAN_FRONTEND=noninteractive \
     MAVEN_OPTS="-Xmx2g" \
-    MAVEN_COMMON_OPTS="-T 1C -DskipTests"
+    MAVEN_COMMON_OPTS="-T 1C -DskipTests" \
+    PATH="/opt/apache-maven-${MAVEN_VERSION}/bin:${PATH}"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Distro Maven breaks Tycho 5.x Guice wiring; use the same Apache Maven as CI.
+RUN apt-get -o Acquire::Retries=5 update \
+    && apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
         git curl ca-certificates unzip zip \
-        maven \
+    && curl -fsSL "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
+      | tar -xz -C /opt \
     && curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get -o Acquire::Retries=5 install -y --no-install-recommends nodejs \
     && corepack enable \
+    && mvn -version \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
