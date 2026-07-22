@@ -5,6 +5,7 @@ import org.jkiss.code.Nullable;
 import org.jkiss.dbeaver.DBException;
 import org.jkiss.dbeaver.model.exec.DBCException;
 import org.jkiss.dbeaver.model.exec.DBCExecutionPurpose;
+import org.jkiss.dbeaver.model.exec.DBCInvalidatePhase;
 import org.jkiss.dbeaver.model.exec.DBCSession;
 import org.jkiss.dbeaver.model.impl.AbstractExecutionContext;
 import org.jkiss.dbeaver.model.runtime.DBRProgressMonitor;
@@ -34,15 +35,17 @@ public class RedisExecutionContext extends AbstractExecutionContext<RedisDataSou
     }
 
     @Override
-    public void checkContextValidity(@NotNull DBRProgressMonitor monitor) throws DBCException {
+    public void checkContextAlive(@NotNull DBRProgressMonitor monitor) throws DBException {
         if (!isConnected()) {
-            throw new DBCException("Redis connection is closed", this);
+            throw new DBCException("Redis connection is closed");
         }
     }
 
     @Override
-    public void invalidateContext(@NotNull DBRProgressMonitor monitor, boolean closeOnFailure)
-        throws DBException {
+    public void invalidateContext(
+        @NotNull DBRProgressMonitor monitor,
+        @NotNull DBCInvalidatePhase phase
+    ) throws DBException {
         // Jedis reconnect is handled lazily on next command.
     }
 

@@ -47,7 +47,9 @@ public class RedisSession extends AbstractSession {
         boolean updatable,
         boolean returnGeneratedKeys
     ) throws DBCException {
-        throw new DBCException("SQL statements are not supported for Redis. Use the navigator to browse keys.", context);
+        throw new DBCException(
+            "SQL statements are not supported for Redis. Use the navigator to browse keys."
+        );
     }
 
     @Override
