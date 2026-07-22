@@ -1,0 +1,21 @@
+/*
+ * Stackblaze communal CloudBeaver chrome.
+ * Auth/identity and settings live in Kubero — hide the CB top-right
+ * profile / help / settings cluster so the UI reads as a scoped DB tool.
+ *
+ * Selectors use CSS-module class substrings + stable title attributes so
+ * they survive upstream asset hash churn.
+ */
+
+/* Help (?) + Settings (gear) cluster */
+[class*="appStateMenu"] {
+  display: none !important;
+}
+
+/* User chip (avatar + email/displayName) and its adjacent chevron menu */
+header [title="Profile"],
+header [title="Profil"],
+header [title="Profile"] + *,
+header [title="Profil"] + * {
+  display: none !important;
+}
