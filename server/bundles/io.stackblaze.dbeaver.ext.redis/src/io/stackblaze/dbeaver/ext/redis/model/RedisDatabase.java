@@ -4,7 +4,9 @@ import io.stackblaze.dbeaver.ext.redis.RedisConstants;
 import org.jkiss.code.NotNull;
 import org.jkiss.code.Nullable;
 import org.jkiss.dbeaver.DBException;
+import org.jkiss.dbeaver.model.meta.Property;
 import org.jkiss.dbeaver.model.runtime.DBRProgressMonitor;
+import org.jkiss.dbeaver.model.runtime.VoidProgressMonitor;
 import org.jkiss.dbeaver.model.struct.DBSObject;
 import org.jkiss.dbeaver.model.struct.DBSObjectContainer;
 import redis.clients.jedis.Jedis;
@@ -29,18 +31,21 @@ public class RedisDatabase implements DBSObject, DBSObjectContainer {
         this.dbIndex = dbIndex;
     }
 
+    @Property(viewable = true, order = 1)
     public int getDbIndex() {
         return dbIndex;
     }
 
     @NotNull
     @Override
+    @Property(viewable = true, order = 2)
     public String getName() {
         return "db" + dbIndex;
     }
 
     @Nullable
     @Override
+    @Property(viewable = true, order = 3)
     public String getDescription() {
         return "Redis database " + dbIndex;
     }
@@ -95,9 +100,21 @@ public class RedisDatabase implements DBSObject, DBSObjectContainer {
         return keys;
     }
 
-    /** Property accessor used by the navigator tree (`property="keys"`). */
+    /**
+     * Property accessor used by the navigator tree (`property="keys"`).
+     * Returns null when not yet loaded so the tree treats children as lazy
+     * (an empty list would make the node look childless forever).
+     */
+    @Nullable
     public List<RedisKey> getKeys() {
-        return keys != null ? keys : List.of();
+        if (keys == null && dataSource.isConnected()) {
+            try {
+                return getKeys(new VoidProgressMonitor());
+            } catch (DBException e) {
+                return null;
+            }
+        }
+        return keys;
     }
 
     @Nullable
