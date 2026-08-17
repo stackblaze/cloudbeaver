@@ -113,6 +113,20 @@ public class WebServiceFS implements DBWServiceFS {
     public FSFile[] getFiles(@NotNull WebSession webSession, @NotNull String parentPath)
         throws DBWebException {
         try {
+            // The panel's first navigation target is the file system node itself
+            // (fsListFileSystems returns its URI). That node is not a DBNPathBase —
+            // list its roots (S3 buckets) as folders.
+            var node = webSession.getNavigatorModelOrThrow()
+                .getNodeByPath(webSession.getProgressMonitor(), parentPath);
+            if (node instanceof DBNFileSystem fsNode) {
+                DBNFileSystemRoot[] roots = fsNode.getChildren(webSession.getProgressMonitor());
+                if (roots == null) {
+                    return new FSFile[0];
+                }
+                return Arrays.stream(roots)
+                    .map(FSFile::new)
+                    .toArray(FSFile[]::new);
+            }
             DBNPathBase folderPath = WebFSUtils.getNodeByPath(webSession, parentPath);
             var children = folderPath.getChildren(webSession.getProgressMonitor());
             if (children == null) {
