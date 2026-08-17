@@ -22,6 +22,7 @@
         <resource name="drivers/kyuubi"/>
         <resource name="drivers/databend"/>
         <resource name="drivers/redis"/>
+        <resource name="drivers/minio"/>
     </extension>
 
     <!-- Bundles  -->
@@ -46,6 +47,7 @@
         <bundle id="drivers.kyuubi" label="Apache Kyuubi drivers"/>
         <bundle id="drivers.databend" label="Databend drivers"/>
         <bundle id="drivers.redis" label="Redis / Valkey drivers"/>
+        <bundle id="drivers.minio" label="MinIO S3 drivers"/>
     </extension>
 
     <!-- Enabled drivers -->

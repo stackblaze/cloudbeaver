@@ -24,7 +24,8 @@
                         sampleURL="http://{host}:{port}"
                         supportedConfigurationTypes="MANUAL,URL"
                         promotesSingleConnection="true">
-                    <file type="jar" path="maven:/io.minio:minio:RELEASE[8.5.17]"/>
+                    <file type="jar" path="maven:/io.minio:minio:RELEASE[8.5.17]" bundle="!drivers.minio"/>
+                    <file type="jar" path="drivers/minio" bundle="drivers.minio"/>
                     <property id="pathStyle" label="Path-style access" type="boolean" defaultValue="true"/>
                     <property id="useSsl" label="Use SSL" type="boolean" defaultValue="false"/>
                     <property id="region" label="Region" type="string" defaultValue="us-east-1"/>
