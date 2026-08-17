@@ -1,0 +1,23 @@
+.git
+.github
+.vscode
+**/.git
+**/node_modules
+**/target
+**/.idea
+# Built package outputs — but keep:
+# - vendored JDBC jars under server/drivers/*/lib (H2 metadata DB needs these)
+# - react-data-grid artifacts/lib (yarn.lock pins file:./artifacts by content hash)
+**/lib
+!server/drivers/
+!server/drivers/*/
+!server/drivers/*/lib/
+!server/drivers/*/lib/**
+!webapp/common-react/@dbeaver/react-data-grid/artifacts/
+!webapp/common-react/@dbeaver/react-data-grid/artifacts/**
+webapp/**/node_modules
+deploy/cloudbeaver
+deploy/drivers
+docs
+*.md
+!server/bundles/io.stackblaze.dbeaver.ext.redis/README.md
