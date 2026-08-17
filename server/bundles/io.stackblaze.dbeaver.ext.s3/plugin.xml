@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+    <extension point="org.jkiss.dbeaver.dataSourceProvider">
+        <datasource
+                class="io.stackblaze.dbeaver.ext.s3.RustfsDataSourceProvider"
+                description="Native S3 / RustFS connector (Stackblaze)"
+                id="s3"
+                label="S3"
+                icon="icons/s3_icon.png">
+
+            <drivers managable="true">
+                <driver
+                        id="rustfs"
+                        label="RustFS / S3"
+                        icon="icons/s3_icon.png"
+                        iconBig="icons/s3_icon_big.png"
+                        category="Cloud"
+                        description="S3-compatible object storage (MinIO SDK)"
+                        categories="cloud,s3,object-storage"
+                        webURL="https://rustfs.com/"
+                        defaultPort="9000"
+                        defaultUser=""
+                        sampleURL="http://{host}:{port}"
+                        supportedConfigurationTypes="MANUAL,URL"
+                        promotesSingleConnection="true">
+                    <file type="jar" path="maven:/io.minio:minio:RELEASE[8.5.17]"/>
+                    <property id="pathStyle" label="Path-style access" type="boolean" defaultValue="true"/>
+                    <property id="useSsl" label="Use SSL" type="boolean" defaultValue="false"/>
+                    <property id="region" label="Region" type="string" defaultValue="us-east-1"/>
+                    <parameter name="supports-references" value="false"/>
+                    <parameter name="supports-indexes" value="false"/>
+                    <parameter name="supports-stored-code" value="false"/>
+                </driver>
+            </drivers>
+        </datasource>
+    </extension>
+
+    <extension point="org.jkiss.dbeaver.fileSystem">
+        <fileSystemProvider
+                id="rustfs-s3"
+                label="RustFS S3"
+                class="io.stackblaze.dbeaver.ext.s3.fs.RustfsVirtualFileSystemProvider"/>
+    </extension>
+</plugin>

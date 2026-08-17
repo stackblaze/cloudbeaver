@@ -1,0 +1,166 @@
+.cloudStorageWrapper {
+  composes: box from global;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pane {
+  composes: box from global;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.treePane {
+  composes: pane;
+  border-right: 1px solid var(--theme-border);
+  min-width: 200px;
+}
+
+.contentPane {
+  composes: pane;
+  flex: 1;
+}
+
+.panelHeader {
+  composes: box from global;
+  padding: 8px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--theme-border);
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  composes: box from global;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--theme-border);
+  flex-shrink: 0;
+}
+
+.breadcrumbItem {
+  composes: box from global;
+  cursor: pointer;
+  color: var(--theme-primary);
+}
+
+.breadcrumbItem:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbSeparator {
+  composes: box from global;
+  color: var(--theme-text-hint);
+}
+
+.fileList {
+  composes: box from global;
+  flex: 1;
+  overflow: auto;
+}
+
+.fileRow {
+  composes: box from global;
+  display: grid;
+  grid-template-columns: 1fr 100px 80px;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--theme-border-secondary);
+}
+
+.fileRow:hover {
+  background: var(--theme-selection);
+}
+
+.fileRowSelected {
+  composes: fileRow;
+  background: var(--theme-selection);
+}
+
+.fileName {
+  composes: box from global;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileHeader {
+  composes: fileRow;
+  font-weight: 600;
+  cursor: default;
+  background: var(--theme-background-secondary);
+}
+
+.fileHeader:hover {
+  background: var(--theme-background-secondary);
+}
+
+.treeList {
+  composes: box from global;
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.treeItem {
+  composes: box from global;
+  padding: 6px 12px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeItem:hover {
+  background: var(--theme-selection);
+}
+
+.treeItemActive {
+  composes: treeItem;
+  background: var(--theme-selection);
+  font-weight: 600;
+}
+
+.statusMessage {
+  composes: box from global;
+  padding: 12px;
+  color: var(--theme-text-hint);
+}
+
+.contextMenuOverlay {
+  composes: box from global;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.contextMenu {
+  composes: box from global;
+  position: fixed;
+  z-index: 1001;
+  min-width: 160px;
+  background: var(--theme-background);
+  border: 1px solid var(--theme-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  padding: 4px 0;
+}
+
+.contextMenuItem {
+  composes: box from global;
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.contextMenuItem:hover {
+  background: var(--theme-selection);
+}

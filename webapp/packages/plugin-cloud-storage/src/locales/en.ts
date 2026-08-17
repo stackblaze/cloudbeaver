@@ -1,0 +1,17 @@
+export default [
+  ['plugin_cloud_storage_action_enable_label', 'Cloud storage'],
+  ['plugin_cloud_storage_placeholder', 'Cloud storage is not active'],
+  ['plugin_cloud_storage_buckets', 'Buckets'],
+  ['plugin_cloud_storage_files', 'Files'],
+  ['plugin_cloud_storage_name', 'Name'],
+  ['plugin_cloud_storage_size', 'Size'],
+  ['plugin_cloud_storage_type', 'Type'],
+  ['plugin_cloud_storage_folder', 'Folder'],
+  ['plugin_cloud_storage_file', 'File'],
+  ['plugin_cloud_storage_open', 'Open'],
+  ['plugin_cloud_storage_copy_uri', 'Copy URI'],
+  ['plugin_cloud_storage_download', 'Download'],
+  ['plugin_cloud_storage_loading', 'Loading…'],
+  ['plugin_cloud_storage_empty', 'No files in this folder'],
+  ['plugin_cloud_storage_no_buckets', 'No S3 buckets available'],
+];

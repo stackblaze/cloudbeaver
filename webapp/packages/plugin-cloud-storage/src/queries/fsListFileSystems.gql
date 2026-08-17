@@ -1,0 +1,7 @@
+query fsListFileSystems($projectId: ID!) {
+  fileSystems: fsListFileSystems(projectId: $projectId) {
+    id
+    nodePath
+    requiredAuth
+  }
+}

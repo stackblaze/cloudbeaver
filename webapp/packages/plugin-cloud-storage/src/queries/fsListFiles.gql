@@ -1,0 +1,9 @@
+query fsListFiles($folderPath: String!) {
+  files: fsListFiles(folderPath: $folderPath) {
+    name
+    length
+    folder
+    metaData
+    nodePath
+  }
+}

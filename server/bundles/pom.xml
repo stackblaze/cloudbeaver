@@ -33,6 +33,7 @@
 
         <module>io.cloudbeaver.resources.drivers.base</module>
         <module>io.stackblaze.dbeaver.ext.redis</module>
+        <module>io.stackblaze.dbeaver.ext.s3</module>
 
         <module>io.cloudbeaver.product.ce</module>
     </modules>

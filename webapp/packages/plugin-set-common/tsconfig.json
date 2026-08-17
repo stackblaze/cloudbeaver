@@ -143,6 +143,9 @@
       "path": "../plugin-browser"
     },
     {
+      "path": "../plugin-cloud-storage"
+    },
+    {
       "path": "../plugin-codemirror6"
     },
     {

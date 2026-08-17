@@ -1,0 +1,3 @@
+query fsReadFileContentAsString($nodePath: String!) {
+  content: fsReadFileContentAsString(nodePath: $nodePath)
+}
