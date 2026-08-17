@@ -26,6 +26,7 @@ import io.cloudbeaver.service.fs.model.FSFileSystem;
 import org.jkiss.code.NotNull;
 import org.jkiss.dbeaver.DBException;
 import org.jkiss.dbeaver.model.navigator.fs.DBNFileSystem;
+import org.jkiss.dbeaver.model.navigator.fs.DBNFileSystemRoot;
 import org.jkiss.dbeaver.model.navigator.fs.DBNFileSystems;
 import org.jkiss.dbeaver.model.navigator.fs.DBNPathBase;
 import org.jkiss.dbeaver.registry.fs.FileSystemProviderRegistry;
