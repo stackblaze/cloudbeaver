@@ -144,13 +144,22 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
     }
 
     @NotNull
+    private List<Bucket> listBuckets() throws IOException {
+        try {
+            return getMinioClient().listBuckets();
+        } catch (Exception e) {
+            throw new IOException("Failed to list S3 buckets: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
     private List<Path> listChildren(@NotNull RustfsPath dir) throws IOException {
         List<Path> children = new ArrayList<>();
         MinioClient client = getMinioClient();
         String separator = dir.getFileSystem().getSeparator();
 
         if (dir.isConnectionRoot()) {
-            for (Bucket bucket : client.listBuckets()) {
+            for (Bucket bucket : listBuckets()) {
                 children.add(new RustfsPath(dir.getFileSystem(), bucket.name()));
             }
             return children;
@@ -246,7 +255,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
     public void checkAccess(Path path, AccessMode... modes) throws IOException {
         RustfsPath s3Path = (RustfsPath) path;
         if (s3Path.isConnectionRoot()) {
-            getMinioClient().listBuckets();
+            listBuckets();
             return;
         }
         readAttributes(path, BasicFileAttributes.class);
@@ -269,7 +278,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         }
         if (s3Path.isBucketPath()) {
             String bucket = s3Path.getBucketName();
-            boolean exists = getMinioClient().listBuckets().stream().anyMatch(b -> bucket.equals(b.name()));
+            boolean exists = listBuckets().stream().anyMatch(b -> bucket.equals(b.name()));
             if (!exists) {
                 throw new FileNotFoundException("Bucket not found: " + bucket);
             }
