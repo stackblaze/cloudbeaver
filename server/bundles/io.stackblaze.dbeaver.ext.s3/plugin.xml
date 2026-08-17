@@ -47,4 +47,10 @@
                 label="RustFS S3"
                 class="io.stackblaze.dbeaver.ext.s3.fs.RustfsVirtualFileSystemProvider"/>
     </extension>
+
+    <extension point="org.jkiss.dbeaver.navigator">
+        <extender id="rustfs-fs" root="true" nodeDisplayName="Remote file systems"
+                  nodeType="org.jkiss.dbeaver.model.navigator.fs.DBNFileSystems"
+                  class="io.stackblaze.dbeaver.ext.s3.RustfsNavigatorModelExtender"/>
+    </extension>
 </plugin>
