@@ -32,6 +32,9 @@
       "path": "../core-localization"
     },
     {
+      "path": "../core-navigation-tree"
+    },
+    {
       "path": "../core-projects"
     },
     {
@@ -51,6 +54,9 @@
     },
     {
       "path": "../core-view"
+    },
+    {
+      "path": "../plugin-navigation-tree"
     },
     {
       "path": "../plugin-sql-editor"

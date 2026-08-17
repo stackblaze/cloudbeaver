@@ -10,12 +10,17 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Loader, Pane, s, Split, TextPlaceholder, useS, useSplitUserState, useTranslate } from '@cloudbeaver/core-blocks';
 import { useService } from '@cloudbeaver/core-di';
+import type { NavNode } from '@cloudbeaver/core-navigation-tree';
+import { ElementsTreeLoader, NavigationTreeService } from '@cloudbeaver/plugin-navigation-tree';
 
 import { CloudStorageDuckDbService } from '../CloudStorageDuckDbService.js';
 import { CloudStorageFileService } from '../CloudStorageFileService.js';
 import { CloudStorageService } from '../CloudStorageService.js';
 import type { IFSFile } from '../queries/queries.js';
 import style from './CloudStoragePanel.module.css';
+
+/** DBNFileSystems navigator node — parent of all virtual file systems. */
+const DBVFS_ROOT = 'node://dbvfs';
 
 export const CloudStoragePanel = observer(function CloudStoragePanel() {
   const styles = useS(style);
@@ -24,6 +29,7 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
   const cloudStorageService = useService(CloudStorageService);
   const cloudStorageFileService = useService(CloudStorageFileService);
   const cloudStorageDuckDbService = useService(CloudStorageDuckDbService);
+  const navTreeService = useService(NavigationTreeService);
   const [contextFile, setContextFile] = useState<IFSFile | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -65,6 +71,36 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
     [cloudStorageService, cloudStorageFileService, cloudStorageDuckDbService, openFolder],
   );
 
+  /** Tree click: folders refresh the file table on the right. */
+  const handleNodeClick = useCallback(
+    async (node: NavNode) => {
+      if (node.hasChildren || node.folder) {
+        openFolder(node.uri);
+      }
+    },
+    [openFolder],
+  );
+
+  /** Tree open (double-click / enter): folders navigate, files open. */
+  const handleNodeOpen = useCallback(
+    async (node: NavNode, folder: boolean) => {
+      if (folder || node.hasChildren) {
+        openFolder(node.uri);
+        return;
+      }
+      // Files: resolve the FS entry via the parent listing — its nodePath is
+      // the canonical fs URI the reader queries understand.
+      if (node.parentId) {
+        await cloudStorageService.loadFiles(node.parentId);
+      }
+      const file = cloudStorageService.files.find(f => f.name === node.name);
+      if (file) {
+        await openFile(file);
+      }
+    },
+    [cloudStorageService, openFile, openFolder],
+  );
+
   const copyUri = useCallback(
     async (file: IFSFile) => {
       await navigator.clipboard.writeText(cloudStorageService.getS3Uri(file.nodePath));
@@ -101,13 +137,6 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
     setMenuPosition(null);
   }, []);
 
-  const navigateToRoot = useCallback(
-    (fileSystemPath: string) => {
-      openFolder(fileSystemPath);
-    },
-    [openFolder],
-  );
-
   if (!cloudStorageService.isActive) {
     return <TextPlaceholder>{translate('plugin_cloud_storage_placeholder')}</TextPlaceholder>;
   }
@@ -119,29 +148,20 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
     <div className={s(styles, { cloudStorageWrapper: true })}>
       <Split {...splitState} disable={false}>
         <Pane className={s(styles, { treePane: true })} basis="25%">
-          <div className={s(styles, { panelHeader: true })}>{translate('plugin_cloud_storage_buckets')}</div>
-          <div className={s(styles, { treeList: true })}>
-            {cloudStorageService.fileSystems.map(fileSystem => (
-              <div
-                key={fileSystem.id}
-                className={s(styles, {
-                  treeItem: true,
-                  treeItemActive: currentPath?.startsWith(fileSystem.nodePath),
-                })}
-                title={fileSystem.nodePath}
-                onClick={() => navigateToRoot(fileSystem.nodePath)}
-              >
-                {fileSystem.id}
-              </div>
-            ))}
-            {cloudStorageService.fileSystems.length === 0 && !cloudStorageService.loading && (
+          <ElementsTreeLoader
+            root={DBVFS_ROOT}
+            getChildren={navTreeService.getChildren}
+            loadChildren={navTreeService.loadNestedNodes}
+            emptyPlaceholder={() => (
               <div className={s(styles, { statusMessage: true })}>{translate('plugin_cloud_storage_no_buckets')}</div>
             )}
-          </div>
+            onClick={handleNodeClick}
+            onOpen={handleNodeOpen}
+          />
         </Pane>
         <Pane className={s(styles, { contentPane: true })} main>
           {cloudStorageService.loading && <Loader />}
-          {currentPath && (
+          {currentPath && connectionId && (
             <div className={s(styles, { breadcrumb: true })}>
               <span
                 className={s(styles, { breadcrumbItem: true })}
