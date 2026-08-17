@@ -37,6 +37,21 @@ public class RustfsDataSourceInfo extends AbstractDataSourceInfo {
     }
 
     @Override
+    public String getCatalogTerm() {
+        return "Bucket";
+    }
+
+    @Override
+    public String getSchemaTerm() {
+        return "";
+    }
+
+    @Override
+    public String getProcedureTerm() {
+        return "";
+    }
+
+    @Override
     public boolean isReadOnlyData() {
         return true;
     }

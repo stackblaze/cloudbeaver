@@ -7,9 +7,9 @@ import org.jkiss.dbeaver.DBException;
 import org.jkiss.dbeaver.model.DBPDataSourceContainer;
 import org.jkiss.dbeaver.model.DBPExclusiveResource;
 import org.jkiss.dbeaver.model.connection.DBPConnectionConfiguration;
+import org.jkiss.code.Nullable;
 import org.jkiss.dbeaver.model.exec.DBCExecutionContext;
 import org.jkiss.dbeaver.model.impl.AbstractDataSource;
-import org.jkiss.dbeaver.model.impl.SimpleExclusiveResource;
 import org.jkiss.dbeaver.model.impl.sql.BasicSQLDialect;
 import org.jkiss.dbeaver.model.runtime.DBRProgressMonitor;
 import org.jkiss.dbeaver.model.sql.SQLDialect;
@@ -23,7 +23,7 @@ import java.util.Collections;
  */
 public class RustfsDataSource extends AbstractDataSource implements DBSInstance {
 
-    private final DBPExclusiveResource exclusiveLock = new SimpleExclusiveResource();
+    private final DBPExclusiveResource exclusiveLock = new RustfsExclusiveResource();
     private final RustfsExecutionContext executionContext;
     private final RustfsDataSourceInfo info = new RustfsDataSourceInfo();
     private volatile MinioClient minioClient;
@@ -97,6 +97,16 @@ public class RustfsDataSource extends AbstractDataSource implements DBSInstance 
     @Override
     public DBCExecutionContext[] getAllContexts() {
         return new DBCExecutionContext[]{executionContext};
+    }
+
+    @NotNull
+    @Override
+    public DBCExecutionContext openIsolatedContext(
+        @NotNull DBRProgressMonitor monitor,
+        @NotNull String purpose,
+        @Nullable DBCExecutionContext initFrom
+    ) {
+        return new RustfsExecutionContext(this, purpose);
     }
 
     @NotNull

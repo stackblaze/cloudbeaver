@@ -10,7 +10,6 @@ import io.minio.messages.Item;
 import io.stackblaze.dbeaver.ext.s3.RustfsConstants;
 import org.jkiss.code.NotNull;
 import org.jkiss.dbeaver.model.connection.DBPConnectionConfiguration;
-import org.jkiss.dbeaver.model.nio.ByteArrayChannel;
 import org.jkiss.dbeaver.model.nio.NIOFileBasicAttribute;
 import org.jkiss.dbeaver.model.nio.NIOFileSystemProvider;
 import org.jkiss.dbeaver.model.nio.NIOUtils;
@@ -103,7 +102,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
     }
 
     @Override
-    public ByteArrayChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
+    public RustfsByteArrayChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
         throws IOException {
         RustfsPath s3Path = (RustfsPath) path;
         if (s3Path.isConnectionRoot() || s3Path.isBucketPath()) {
@@ -117,7 +116,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         try (InputStream stream = getMinioClient().getObject(
             GetObjectArgs.builder().bucket(bucket).object(key).build()
         )) {
-            return new ByteArrayChannel(stream.readAllBytes(), options);
+            return new RustfsByteArrayChannel(stream.readAllBytes(), options);
         } catch (Exception e) {
             throw new IOException("Failed to read S3 object: " + e.getMessage(), e);
         }

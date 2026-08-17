@@ -7,7 +7,6 @@ import org.jkiss.dbeaver.model.exec.DBCExecutionPurpose;
 import org.jkiss.dbeaver.model.exec.DBCInvalidatePhase;
 import org.jkiss.dbeaver.model.exec.DBCSession;
 import org.jkiss.dbeaver.model.impl.AbstractExecutionContext;
-import org.jkiss.dbeaver.model.impl.AbstractSession;
 import org.jkiss.dbeaver.model.runtime.DBRProgressMonitor;
 
 public class RustfsExecutionContext extends AbstractExecutionContext<RustfsDataSource, RustfsDataSource> {
@@ -30,8 +29,7 @@ public class RustfsExecutionContext extends AbstractExecutionContext<RustfsDataS
         @NotNull DBCExecutionPurpose purpose,
         @NotNull String task
     ) {
-        return new AbstractSession(monitor, this, purpose) {
-        };
+        return new RustfsSession(monitor, this, purpose, task);
     }
 
     @Override

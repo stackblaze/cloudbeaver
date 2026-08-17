@@ -196,7 +196,8 @@ public class RustfsPath extends NIOPath {
         return new RustfsPath(fileSystem, String.join(getFileSystem().getSeparator(), Arrays.copyOfRange(parts, beginIndex, endIndex)));
     }
 
-    private String resolveString(@NotNull String other) {
+    @Override
+    protected String resolveString(@NotNull String other) {
         if (CommonUtils.isEmpty(path)) {
             return normalizePath(other);
         }
@@ -205,7 +206,8 @@ public class RustfsPath extends NIOPath {
         return normalizePath(base + other);
     }
 
-    private String[] pathParts() {
+    @Override
+    protected String[] pathParts() {
         if (CommonUtils.isEmpty(path)) {
             return new String[0];
         }

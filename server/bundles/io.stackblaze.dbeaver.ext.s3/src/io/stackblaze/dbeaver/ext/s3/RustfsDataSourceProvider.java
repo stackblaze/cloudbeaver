@@ -35,7 +35,11 @@ public class RustfsDataSourceProvider extends AbstractDataSourceProvider {
     public String getConnectionURL(@NotNull DBPDriver driver, @NotNull DBPConnectionConfiguration connectionInfo) {
         String template = driver.getSampleURL();
         if (!CommonUtils.isEmpty(template)) {
-            return DatabaseURL.generateUrlByTemplate(driver, connectionInfo);
+            try {
+                return DatabaseURL.generateUrlByTemplate(driver, connectionInfo);
+            } catch (DBException e) {
+                // Fall through to the constructed http(s):// URL.
+            }
         }
         String host = CommonUtils.notEmpty(connectionInfo.getHostName());
         String port = CommonUtils.notEmpty(connectionInfo.getHostPort());
