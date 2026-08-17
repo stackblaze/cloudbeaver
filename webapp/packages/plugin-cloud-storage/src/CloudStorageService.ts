@@ -126,8 +126,14 @@ export class CloudStorageService {
     return this.rustfsConnections.find(connection => connection.id === connectionId);
   }
 
+  /**
+   * Real S3 URI (`s3://<bucket>/<key>`) for DuckDB and clipboard use. The
+   * internal fs path prefixes the file-system (connection) id — strip it.
+   */
   getS3Uri(nodePath: string): string {
-    return this.nodeUriToFsPath(nodePath) ?? nodePath;
+    const fsPath = this.nodeUriToFsPath(nodePath) ?? nodePath;
+    const match = fsPath.match(/^s3:\/\/[^/]+\/(.+)$/);
+    return match ? `s3://${match[1]}` : fsPath;
   }
 
   /**

@@ -200,7 +200,7 @@ export class CloudStorageBootstrap extends Bootstrap {
               if (this.cloudStorageFileService.isSqlFile(name)) {
                 await this.cloudStorageFileService.openSqlFile(node.uri);
               } else if (this.cloudStorageDuckDbService.isDataFile(name)) {
-                await this.cloudStorageDuckDbService.openDataFile(fsPath, s3Connection, name);
+                await this.cloudStorageDuckDbService.openDataFile(this.cloudStorageService.getS3Uri(node.uri), s3Connection, name);
               }
               break;
             }
@@ -212,7 +212,7 @@ export class CloudStorageBootstrap extends Bootstrap {
               break;
             }
             case ACTION_CLOUD_STORAGE_COPY_URI: {
-              await navigator.clipboard.writeText(fsPath);
+              await navigator.clipboard.writeText(this.cloudStorageService.getS3Uri(node.uri));
               break;
             }
             case ACTION_RENAME: {
