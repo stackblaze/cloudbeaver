@@ -162,8 +162,10 @@ export class CloudStorageBootstrap extends Bootstrap {
               if (!s3Connection) {
                 return;
               }
+              // Server-facing calls take the navigator uri — the s3:// alias
+              // only resolves in sessions that materialized it via the fs API.
               if (this.cloudStorageFileService.isSqlFile(name)) {
-                await this.cloudStorageFileService.openSqlFile(fsPath);
+                await this.cloudStorageFileService.openSqlFile(node.uri);
               } else if (this.cloudStorageDuckDbService.isDataFile(name)) {
                 await this.cloudStorageDuckDbService.openDataFile(fsPath, s3Connection, name);
               }
@@ -171,7 +173,7 @@ export class CloudStorageBootstrap extends Bootstrap {
             }
             case ACTION_DOWNLOAD: {
               const anchor = document.createElement('a');
-              anchor.href = GlobalConstants.absoluteServiceUrl('fs-data') + `?nodePath=${encodeURIComponent(fsPath)}`;
+              anchor.href = GlobalConstants.absoluteServiceUrl('fs-data') + `?nodePath=${encodeURIComponent(node.uri)}`;
               anchor.download = name;
               anchor.click();
               break;
@@ -198,7 +200,7 @@ export class CloudStorageBootstrap extends Bootstrap {
               break;
             }
             case ACTION_CLOUD_STORAGE_UPLOAD: {
-              await this.uploadTo(node, fsPath);
+              await this.uploadTo(node, node.uri);
               break;
             }
           }
@@ -218,7 +220,7 @@ export class CloudStorageBootstrap extends Bootstrap {
     });
   }
 
-  private uploadTo(node: NavNode, fsPath: string): Promise<void> {
+  private uploadTo(node: NavNode, parentNodePath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
@@ -231,7 +233,7 @@ export class CloudStorageBootstrap extends Bootstrap {
             return;
           }
           const body = new FormData();
-          body.append('variables', JSON.stringify({ toParentNodePath: fsPath }));
+          body.append('variables', JSON.stringify({ toParentNodePath: parentNodePath }));
           for (const file of files) {
             body.append('files', file, file.name);
           }
