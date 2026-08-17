@@ -3,6 +3,7 @@ package io.stackblaze.dbeaver.ext.s3.fs;
 import io.cloudbeaver.model.WebConnectionInfo;
 import io.minio.CopyObjectArgs;
 import io.minio.CopySource;
+import io.minio.Directive;
 import io.minio.GetObjectArgs;
 import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
@@ -312,6 +313,9 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
                 CopyObjectArgs.builder()
                     .bucket(dst.getBucketName())
                     .object(dst.getObjectKey())
+                    // RustFS rejects COPY-directive requests that carry metadata:
+                    // "Replacement metadata requires the REPLACE metadata directive"
+                    .metadataDirective(Directive.REPLACE)
                     .source(CopySource.builder().bucket(src.getBucketName()).object(src.getObjectKey()).build())
                     .build()
             );
