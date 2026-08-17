@@ -181,27 +181,6 @@ public class RustfsPath extends NIOPath {
         return this;
     }
 
-    /**
-     * Every RustfsPath reports isAbsolute() == true, so Path's default
-     * resolve() would return `other` wholesale — losing this path's prefix
-     * (rename targets ended up at bucket level with an empty object key).
-     * Resolve by concatenating object paths instead.
-     */
-    @Override
-    public Path resolve(@NotNull Path other) {
-        if (!(other instanceof RustfsPath otherPath)) {
-            return other;
-        }
-        String otherObject = otherPath.getObjectPath();
-        if (CommonUtils.isEmpty(otherObject)) {
-            return this;
-        }
-        if (CommonUtils.isEmpty(path)) {
-            return otherPath;
-        }
-        return new RustfsPath(fileSystem, path + getFileSystem().getSeparator() + otherObject);
-    }
-
     @Override
     public Path relativize(@NotNull Path other) {
         var relativeUri = toUri().resolve(other.toUri());
