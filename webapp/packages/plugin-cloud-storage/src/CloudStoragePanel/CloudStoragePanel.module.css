@@ -1,7 +1,9 @@
 .cloudStorageWrapper {
   composes: box from global;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .pane {
