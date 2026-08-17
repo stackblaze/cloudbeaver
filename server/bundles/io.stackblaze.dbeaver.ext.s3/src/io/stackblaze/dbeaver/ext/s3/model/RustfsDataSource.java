@@ -124,8 +124,10 @@ public class RustfsDataSource extends AbstractDataSource
     }
 
     @Override
-    public void initialize(@NotNull DBRProgressMonitor monitor) {
-        // Bucket listing is lazy (getBuckets) — nothing to pre-load.
+    public void initialize(@NotNull DBRProgressMonitor monitor) throws DBException {
+        // Eager-load like RedisDataSource: the navigator meta reader may bind
+        // to the no-arg getBuckets(), which only serves this cache.
+        getBuckets(monitor);
     }
 
     @NotNull
@@ -179,6 +181,9 @@ public class RustfsDataSource extends AbstractDataSource
 
     @Override
     public void cacheStructure(@NotNull DBRProgressMonitor monitor, int scope) throws DBException {
+        synchronized (this) {
+            buckets = null; // refresh re-reads the bucket list
+        }
         getBuckets(monitor);
     }
 
