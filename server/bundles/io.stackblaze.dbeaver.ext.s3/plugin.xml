@@ -9,6 +9,10 @@
                 label="S3"
                 icon="icons/s3_icon.png">
 
+            <tree path="s3" label="S3 data source">
+                <items label="Bucket" path="bucket" property="buckets" icon="#folder"/>
+            </tree>
+
             <drivers managable="true">
                 <driver
                         id="rustfs"
