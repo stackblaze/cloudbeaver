@@ -28,6 +28,15 @@ export const FS_LIST_FILES_QUERY = `
   }
 `;
 
+export const FS_CREATE_FOLDER_MUTATION = `
+  mutation fsCreateFolder($parentPath: String!, $folderName: String!) {
+    folder: fsCreateFolder(parentPath: $parentPath, folderName: $folderName) {
+      name
+      nodePath
+    }
+  }
+`;
+
 export const FS_READ_FILE_CONTENT_QUERY = `
   query fsReadFileContentAsString($nodePath: String!) {
     content: fsReadFileContentAsString(nodePath: $nodePath)

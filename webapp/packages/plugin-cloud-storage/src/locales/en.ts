@@ -15,5 +15,6 @@ export default [
   ['plugin_cloud_storage_empty', 'No files in this folder'],
   ['plugin_cloud_storage_no_buckets', 'No S3 buckets available'],
   ['plugin_cloud_storage_upload', 'Upload files'],
+  ['plugin_cloud_storage_create_bucket', 'Create bucket'],
   ['plugin_cloud_storage_action_error', 'Cloud storage operation failed'],
 ];

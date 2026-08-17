@@ -11,11 +11,12 @@ import { CommonDialogService, DialogueStateResult } from '@cloudbeaver/core-dial
 import { NotificationService } from '@cloudbeaver/core-events';
 import { DATA_CONTEXT_NAV_NODE, NavNodeManagerService, NavTreeResource, type NavNode } from '@cloudbeaver/core-navigation-tree';
 import { GlobalConstants } from '@cloudbeaver/core-utils';
-import { ACTION_DELETE, ACTION_DOWNLOAD, ACTION_OPEN, ACTION_RENAME, ActionService, menuExtractItems, MenuService } from '@cloudbeaver/core-view';
+import { ACTION_DELETE, ACTION_DOWNLOAD, ACTION_NEW_FOLDER, ACTION_OPEN, ACTION_RENAME, ActionService, menuExtractItems, MenuService } from '@cloudbeaver/core-view';
 import { MENU_NAV_TREE } from '@cloudbeaver/plugin-navigation-tree';
 import { MENU_TOOLS, ToolsPanelService } from '@cloudbeaver/plugin-tools-panel';
 
 import { ACTION_CLOUD_STORAGE_COPY_URI } from './Actions/ACTION_CLOUD_STORAGE_COPY_URI.js';
+import { ACTION_CLOUD_STORAGE_CREATE_BUCKET } from './Actions/ACTION_CLOUD_STORAGE_CREATE_BUCKET.js';
 import { ACTION_CLOUD_STORAGE_ENABLE } from './Actions/ACTION_CLOUD_STORAGE_ENABLE.js';
 import { ACTION_CLOUD_STORAGE_UPLOAD } from './Actions/ACTION_CLOUD_STORAGE_UPLOAD.js';
 import { CloudStorageDuckDbService } from './CloudStorageDuckDbService.js';
@@ -69,6 +70,11 @@ export class CloudStorageBootstrap extends Bootstrap {
     return this.isEntry(fsPath) && !node.folder && !node.hasChildren;
   }
 
+  /** The storage root (s3://<fsId>, no path) — where buckets are created. */
+  private isStorageRoot(fsPath: string | null): fsPath is string {
+    return !!fsPath && /^s3:\/\/[^/]+\/?$/.test(fsPath);
+  }
+
   override register(): void {
     this.menuService.addCreator({
       menus: [MENU_TOOLS],
@@ -115,17 +121,43 @@ export class CloudStorageBootstrap extends Bootstrap {
         const fsPath = this.fsPath(node);
         return !!node && this.isEntry(fsPath) && !this.isFile(node!, fsPath);
       },
-      getItems: (context, items) => [...items, ACTION_CLOUD_STORAGE_UPLOAD, ACTION_DELETE],
+      getItems: (context, items) => [...items, ACTION_CLOUD_STORAGE_UPLOAD, ACTION_NEW_FOLDER, ACTION_DELETE],
+    });
+
+    // Storage root: create buckets.
+    this.menuService.addCreator({
+      menus: [MENU_NAV_TREE],
+      contexts: [DATA_CONTEXT_NAV_NODE],
+      isApplicable: context => {
+        const node = context.get(DATA_CONTEXT_NAV_NODE);
+        return !!node && this.isStorageRoot(this.fsPath(node));
+      },
+      getItems: (context, items) => [...items, ACTION_CLOUD_STORAGE_CREATE_BUCKET],
     });
 
     this.actionService.addHandler({
       id: 'cloud-storage-node-actions',
-      actions: [ACTION_OPEN, ACTION_DOWNLOAD, ACTION_CLOUD_STORAGE_COPY_URI, ACTION_RENAME, ACTION_DELETE, ACTION_CLOUD_STORAGE_UPLOAD],
+      actions: [
+        ACTION_OPEN,
+        ACTION_DOWNLOAD,
+        ACTION_CLOUD_STORAGE_COPY_URI,
+        ACTION_RENAME,
+        ACTION_DELETE,
+        ACTION_CLOUD_STORAGE_UPLOAD,
+        ACTION_NEW_FOLDER,
+        ACTION_CLOUD_STORAGE_CREATE_BUCKET,
+      ],
       contexts: [DATA_CONTEXT_NAV_NODE],
       isActionApplicable: (context, action) => {
         const node = context.get(DATA_CONTEXT_NAV_NODE);
         const fsPath = this.fsPath(node);
-        if (!node || !this.isEntry(fsPath)) {
+        if (!node || !fsPath) {
+          return false;
+        }
+        if (action === ACTION_CLOUD_STORAGE_CREATE_BUCKET) {
+          return this.isStorageRoot(fsPath);
+        }
+        if (!this.isEntry(fsPath)) {
           return false;
         }
         const file = this.isFile(node, fsPath);
@@ -140,6 +172,7 @@ export class CloudStorageBootstrap extends Bootstrap {
           case ACTION_RENAME:
             return file;
           case ACTION_CLOUD_STORAGE_UPLOAD:
+          case ACTION_NEW_FOLDER:
             return !file;
           case ACTION_DELETE:
             return true;
@@ -150,7 +183,7 @@ export class CloudStorageBootstrap extends Bootstrap {
       handler: async (context, action) => {
         const node = context.get(DATA_CONTEXT_NAV_NODE);
         const fsPath = this.fsPath(node);
-        if (!node || !this.isEntry(fsPath)) {
+        if (!node || !fsPath) {
           return;
         }
         const name = node.name ?? '';
@@ -201,6 +234,25 @@ export class CloudStorageBootstrap extends Bootstrap {
             }
             case ACTION_CLOUD_STORAGE_UPLOAD: {
               await this.uploadTo(node, node.uri);
+              break;
+            }
+            case ACTION_CLOUD_STORAGE_CREATE_BUCKET:
+            case ACTION_NEW_FOLDER: {
+              const bucket = action === ACTION_CLOUD_STORAGE_CREATE_BUCKET;
+              const { status, result } = await this.commonDialogService.open(RenameDialog, {
+                name: '',
+                subTitle: bucket ? node.name : `${node.name ?? ''}/`,
+                objectName: bucket ? 'Bucket' : 'Folder',
+                icon: node.icon,
+                validation: newName =>
+                  bucket
+                    ? /^[a-z0-9][a-z0-9.-]{2,62}$/.test(newName)
+                    : newName.trim().length > 0 && !newName.includes('/'),
+              });
+              if (status === DialogueStateResult.Resolved && result) {
+                await this.cloudStorageService.createFolder(node.uri, result);
+                await this.navNodeManagerService.refreshTree(node.uri);
+              }
               break;
             }
           }

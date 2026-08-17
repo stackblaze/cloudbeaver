@@ -23,6 +23,7 @@ import { ToolsPanelService } from '@cloudbeaver/plugin-tools-panel';
 import {
   FS_LIST_FILE_SYSTEMS_QUERY,
   FS_LIST_FILES_QUERY,
+  FS_CREATE_FOLDER_MUTATION,
   FS_READ_FILE_CONTENT_QUERY,
   type FsListFileSystemsResult,
   type FsListFilesResult,
@@ -206,6 +207,11 @@ export class CloudStorageService {
   async readFileContent(nodePath: string): Promise<string> {
     const result = await this.graphQLService.client.request<FsReadFileContentResult>(FS_READ_FILE_CONTENT_QUERY, { nodePath });
     return result.content;
+  }
+
+  /** Creates a bucket (root parent) or folder marker (bucket/folder parent). */
+  async createFolder(parentPath: string, folderName: string): Promise<void> {
+    await this.graphQLService.client.request(FS_CREATE_FOLDER_MUTATION, { parentPath, folderName });
   }
 
   getConnectionKey(connection: Connection) {
