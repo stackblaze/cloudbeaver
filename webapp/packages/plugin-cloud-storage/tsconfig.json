@@ -26,6 +26,9 @@
       "path": "../core-di"
     },
     {
+      "path": "../core-dialogs"
+    },
+    {
       "path": "../core-events"
     },
     {

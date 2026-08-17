@@ -1,9 +1,15 @@
 package io.stackblaze.dbeaver.ext.s3.fs;
 
 import io.cloudbeaver.model.WebConnectionInfo;
+import io.minio.CopyObjectArgs;
+import io.minio.CopySource;
 import io.minio.GetObjectArgs;
 import io.minio.ListObjectsArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveBucketArgs;
+import io.minio.RemoveObjectArgs;
 import io.minio.Result;
 import io.minio.messages.Bucket;
 import io.minio.messages.Item;
@@ -15,6 +21,7 @@ import org.jkiss.dbeaver.model.nio.NIOFileSystemProvider;
 import org.jkiss.dbeaver.model.nio.NIOUtils;
 import org.jkiss.utils.CommonUtils;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -113,12 +120,41 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         if (CommonUtils.isEmpty(bucket) || CommonUtils.isEmpty(key)) {
             throw new FileNotFoundException("Invalid S3 object path: " + path);
         }
-        try (InputStream stream = getMinioClient().getObject(
-            GetObjectArgs.builder().bucket(bucket).object(key).build()
-        )) {
-            return new RustfsByteArrayChannel(stream.readAllBytes(), options);
+
+        boolean write = options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.APPEND);
+        boolean readExisting = !write
+            || options.contains(StandardOpenOption.APPEND)
+            || !(options.contains(StandardOpenOption.TRUNCATE_EXISTING) || options.contains(StandardOpenOption.CREATE_NEW));
+
+        byte[] initial = new byte[0];
+        if (readExisting) {
+            try (InputStream stream = getMinioClient().getObject(
+                GetObjectArgs.builder().bucket(bucket).object(key).build()
+            )) {
+                initial = stream.readAllBytes();
+            } catch (Exception e) {
+                if (!write) {
+                    throw new IOException("Failed to read S3 object: " + e.getMessage(), e);
+                }
+                // Writing a new object — nothing to pre-read.
+            }
+        }
+
+        RustfsByteArrayChannel.WriteSink sink = write ? data -> putObject(bucket, key, data) : null;
+        return new RustfsByteArrayChannel(initial, options, sink);
+    }
+
+    private void putObject(String bucket, String key, byte[] data) throws IOException {
+        try {
+            getMinioClient().putObject(
+                PutObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(key)
+                    .stream(new ByteArrayInputStream(data), data.length, -1)
+                    .build()
+            );
         } catch (Exception e) {
-            throw new IOException("Failed to read S3 object: " + e.getMessage(), e);
+            throw new IOException("Failed to write S3 object: " + e.getMessage(), e);
         }
     }
 
@@ -217,23 +253,84 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
     }
 
     @Override
-    public void createDirectory(Path dir, FileAttribute<?>... attrs) {
-        throw new UnsupportedOperationException("Creating S3 directories is not supported");
+    public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+        RustfsPath s3Dir = (RustfsPath) dir;
+        if (s3Dir.isConnectionRoot()) {
+            throw new IOException("Cannot create the storage root");
+        }
+        try {
+            if (s3Dir.isBucketPath()) {
+                getMinioClient().makeBucket(MakeBucketArgs.builder().bucket(s3Dir.getBucketName()).build());
+                return;
+            }
+            // S3 has no directories — create the conventional zero-byte marker.
+            putObject(s3Dir.getBucketName(), s3Dir.getObjectKey() + "/", new byte[0]);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Failed to create S3 directory: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    public void delete(Path path) {
-        throw new UnsupportedOperationException("Deleting S3 objects is not supported");
+    public void delete(Path path) throws IOException {
+        RustfsPath s3Path = (RustfsPath) path;
+        if (s3Path.isConnectionRoot()) {
+            throw new IOException("Cannot delete the storage root");
+        }
+        try {
+            MinioClient client = getMinioClient();
+            if (s3Path.isBucketPath()) {
+                client.removeBucket(RemoveBucketArgs.builder().bucket(s3Path.getBucketName()).build());
+                return;
+            }
+            String bucket = s3Path.getBucketName();
+            String key = s3Path.getObjectKey();
+            // Folder prefix: delete everything under it, then the marker/object itself.
+            Iterable<Result<Item>> nested = client.listObjects(
+                ListObjectsArgs.builder().bucket(bucket).prefix(key + "/").recursive(true).build()
+            );
+            for (Result<Item> result : nested) {
+                client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(result.get().objectName()).build());
+            }
+            client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(key).build());
+            client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(key + "/").build());
+        } catch (Exception e) {
+            throw new IOException("Failed to delete S3 object: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    public void copy(Path source, Path target, CopyOption... options) {
-        throw new UnsupportedOperationException();
+    public void copy(Path source, Path target, CopyOption... options) throws IOException {
+        RustfsPath src = (RustfsPath) source;
+        RustfsPath dst = (RustfsPath) target;
+        if (CommonUtils.isEmpty(src.getObjectKey()) || CommonUtils.isEmpty(dst.getObjectKey())) {
+            throw new IOException("Only S3 objects can be copied");
+        }
+        try {
+            getMinioClient().copyObject(
+                CopyObjectArgs.builder()
+                    .bucket(dst.getBucketName())
+                    .object(dst.getObjectKey())
+                    .source(CopySource.builder().bucket(src.getBucketName()).object(src.getObjectKey()).build())
+                    .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to copy S3 object: " + e.getMessage(), e);
+        }
     }
 
     @Override
-    public void move(Path source, Path target, CopyOption... options) {
-        throw new UnsupportedOperationException();
+    public void move(Path source, Path target, CopyOption... options) throws IOException {
+        copy(source, target, options);
+        RustfsPath src = (RustfsPath) source;
+        try {
+            getMinioClient().removeObject(
+                RemoveObjectArgs.builder().bucket(src.getBucketName()).object(src.getObjectKey()).build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to remove S3 object after move: " + e.getMessage(), e);
+        }
     }
 
     @Override

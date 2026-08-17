@@ -1,9 +1,18 @@
 .cloudStorageWrapper {
   composes: box from global;
   height: 100%;
+  width: 100%;
   overflow: auto;
   display: flex;
   flex-direction: column;
+}
+
+.tree {
+  composes: box from global;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
 }
 
 .pane {

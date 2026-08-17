@@ -117,7 +117,7 @@ export class CloudStorageService {
   }
 
   findRustfsConnectionForPath(nodePath: string): Connection | undefined {
-    const connectionId = nodePath.match(/^s3:\/\/([^/]+)/)?.[1];
+    const connectionId = this.nodeUriToFsPath(nodePath)?.match(/^s3:\/\/([^/]+)/)?.[1];
     if (!connectionId) {
       return undefined;
     }
@@ -126,7 +126,25 @@ export class CloudStorageService {
   }
 
   getS3Uri(nodePath: string): string {
-    return nodePath;
+    return this.nodeUriToFsPath(nodePath) ?? nodePath;
+  }
+
+  /**
+   * Navigator nodes under the virtual file system use
+   * `node://dbvfs/<fsId>/<encoded-root-name>/<segments…>` URIs, while the fs
+   * GraphQL API and the data servlet address entries by their canonical
+   * `s3://<fsId>/<segments…>` path. Convert; returns null for non-storage URIs.
+   */
+  nodeUriToFsPath(uri: string): string | null {
+    if (uri.startsWith('s3://')) {
+      return uri;
+    }
+    const match = uri.match(/^node:\/\/dbvfs\/([^/]+)(?:\/[^/]+)?(?:\/(.+))?$/);
+    if (!match) {
+      return null;
+    }
+    const rest = match[2] ? '/' + match[2].split('/').map(decodeURIComponent).join('/') : '';
+    return `s3://${match[1]}${rest}`;
   }
 
   async loadFileSystems(): Promise<void> {

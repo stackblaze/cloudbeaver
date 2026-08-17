@@ -69,6 +69,7 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
     <div className={s(styles, { cloudStorageWrapper: true })}>
       <ElementsTreeLoader
         root={root}
+        className={s(styles, { tree: true })}
         getChildren={navTreeService.getChildren}
         loadChildren={navTreeService.loadNestedNodes}
         emptyPlaceholder={() => (
