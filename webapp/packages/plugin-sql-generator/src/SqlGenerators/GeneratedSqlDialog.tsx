@@ -23,6 +23,8 @@ import {
 import { ConnectionDialectResource, ConnectionInfoResource, createConnectionParam } from '@cloudbeaver/core-connections';
 import { useService } from '@cloudbeaver/core-di';
 import type { DialogComponentProps } from '@cloudbeaver/core-dialogs';
+import { EObjectFeature, NavNodeManagerService } from '@cloudbeaver/core-navigation-tree';
+import { download, withTimestamp } from '@dbeaver/js-helpers';
 import { useCodemirrorExtensions } from '@cloudbeaver/plugin-codemirror6';
 import { SqlEditorNavigatorService } from '@cloudbeaver/plugin-sql-editor-navigation-tab';
 import { SQLCodeEditor, useSqlDialectExtension } from '@cloudbeaver/plugin-sql-editor-codemirror';
@@ -31,8 +33,13 @@ import { action, observable } from 'mobx';
 import { NotificationService } from '@cloudbeaver/core-events';
 import type { SqlQueryGeneratorOptions } from '@cloudbeaver/core-sdk';
 
+import { DDL_GENERATOR_ID } from './SqlGeneratorsResource.js';
+
 interface Payload {
   nodeId: string;
+  nodeName?: string;
+  generatorId: string;
+  generatorName?: string;
   query: string;
   options?: SqlQueryGeneratorOptions;
   regenerateQuery: (options: SqlQueryGeneratorOptions) => Promise<string>;
@@ -47,6 +54,7 @@ export const GeneratedSqlDialog = observer<DialogComponentProps<Payload>>(functi
     () => ({
       useFullyQualifiedNames: payload.options?.useFullyQualifiedNames ?? true,
       compactSql: payload.options?.compactSql ?? false,
+      showFullDdl: payload.options?.showFullDdl,
       query: payload.query,
       loading: false,
       handleOptionChange: async function handleOptionChange<T extends keyof typeof state>(key: T, value: (typeof state)[T]) {
@@ -57,6 +65,7 @@ export const GeneratedSqlDialog = observer<DialogComponentProps<Payload>>(functi
           this.query = await this.payload.regenerateQuery({
             compactSql: this.compactSql,
             useFullyQualifiedNames: this.useFullyQualifiedNames,
+            showFullDdl: this.showFullDdl,
           });
         } catch (error: any) {
           this.notificationService.logException(error, 'app_shared_sql_generators_error_title');
@@ -69,6 +78,7 @@ export const GeneratedSqlDialog = observer<DialogComponentProps<Payload>>(functi
       handleOptionChange: action.bound,
       useFullyQualifiedNames: observable.ref,
       compactSql: observable.ref,
+      showFullDdl: observable.ref,
       query: observable.ref,
       loading: observable.ref,
     },
@@ -80,6 +90,7 @@ export const GeneratedSqlDialog = observer<DialogComponentProps<Payload>>(functi
 
   const connectionInfoResource = useService(ConnectionInfoResource);
   const sqlEditorNavigatorService = useService(SqlEditorNavigatorService);
+  const navNodeManagerService = useService(NavNodeManagerService);
   const connection = connectionInfoResource.getConnectionForNode(payload.nodeId);
 
   const connectionDialectResource = useResource(GeneratedSqlDialog, ConnectionDialectResource, connection ? createConnectionParam(connection) : null);
@@ -91,17 +102,32 @@ export const GeneratedSqlDialog = observer<DialogComponentProps<Payload>>(functi
   }
 
   const visibleLoading = useStateDelay(state.loading, 300);
+  const isDdlGenerator = payload.generatorId.toLowerCase().includes(DDL_GENERATOR_ID.toLowerCase());
+  const node = navNodeManagerService.getNode(payload.nodeId);
+  const supportsFullDdl = node?.objectFeatures.includes(EObjectFeature.supportsFullDdl) ?? false;
+  const hasFullDdl = isDdlGenerator && supportsFullDdl;
 
   async function handleOpenInEditor() {
     try {
+      const container = navNodeManagerService.getNodeContainerInfo(payload.nodeId);
+
       await sqlEditorNavigatorService.openNewEditor({
         connectionKey: connection ? createConnectionParam(connection) : undefined,
+        catalogId: container.catalogId,
+        schemaId: container.schemaId,
         query: state.query,
       });
       rejectDialog();
     } catch (error: any) {
       notificationService.logException(error, 'app_shared_sql_generators_error_open_editor');
     }
+  }
+
+  function handleSaveToFile() {
+    const blob = new Blob([state.query], { type: 'application/sql' });
+    const name = [payload.nodeName, payload.generatorName].join('-') || 'Generated';
+
+    download(blob, `${withTimestamp(name)}.sql`);
   }
 
   return (
@@ -118,31 +144,51 @@ export const GeneratedSqlDialog = observer<DialogComponentProps<Payload>>(functi
             <div className="tw:flex tw:flex-row tw:gap-3 tw:w-full">
               <Checkbox
                 id="use-fully-qualified-names"
-                state={state}
-                name="useFullyQualifiedNames"
                 disabled={visibleLoading}
                 label={translate('app_shared_sql_generators_use_fully_qualified_names')}
                 onChange={value => state.handleOptionChange('useFullyQualifiedNames', value)}
               />
-
               <Checkbox
                 id="compact-sql"
-                state={state}
-                name="compactSql"
                 disabled={visibleLoading}
                 label={translate('app_shared_sql_generators_compact_sql')}
                 onChange={value => state.handleOptionChange('compactSql', value)}
               />
+              {hasFullDdl && (
+                <Checkbox
+                  id="show-full-ddl"
+                  disabled={visibleLoading}
+                  label={translate('app_shared_sql_generators_full_ddl')}
+                  onChange={value => state.handleOptionChange('showFullDdl', value)}
+                />
+              )}
             </div>
           </div>
-          <div className="tw:flex tw:justify-end tw:w-full tw:gap-6">
-            <Button variant="secondary" disabled={!state.query || visibleLoading} onClick={() => copy(state.query, true)}>
-              {translate('ui_copy_to_clipboard')}
-            </Button>
-            <Button variant="secondary" disabled={!state.query || visibleLoading} onClick={handleOpenInEditor}>
-              {translate('app_shared_sql_generators_open_in_editor')}
-            </Button>
-            <Button onClick={() => rejectDialog()}>{translate('ui_close')}</Button>
+          <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-6">
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <Button
+                variant="secondary"
+                icon="/icons/export.svg"
+                title={translate('ui_download')}
+                disabled={!state.query || visibleLoading}
+                className="tw:aspect-square tw:!min-w-0 tw:!px-0"
+                onClick={handleSaveToFile}
+              />
+              <Button
+                variant="secondary"
+                icon="copy"
+                title={translate('ui_copy_to_clipboard')}
+                disabled={!state.query || visibleLoading}
+                className="tw:aspect-square tw:!min-w-0 tw:!px-0"
+                onClick={() => copy(state.query, true)}
+              />
+            </div>
+            <div className="tw:flex tw:items-center tw:gap-6">
+              <Button variant="secondary" disabled={!state.query || visibleLoading} onClick={handleOpenInEditor}>
+                {translate('app_shared_sql_generators_open_in_editor')}
+              </Button>
+              <Button onClick={() => rejectDialog()}>{translate('ui_close')}</Button>
+            </div>
           </div>
         </div>
       </CommonDialogFooter>

@@ -129,7 +129,7 @@ public class WebServiceAuthImpl implements DBWServiceAuth {
         }
         try {
             Map<String, Object> authParameters = new HashMap<>();
-            authParameters.put(SMConstants.USER_ORIGIN, ServletAppUtils.getOriginFromRequest(httpRequest));
+            authParameters.put(SMConstants.USER_ORIGIN, ServletAppUtils.getHostOriginFromRequest(httpRequest));
 
             var smAuthInfo = initiateAuthentication(webSession, providerId, providerConfigurationId, authParameters, forceSessionsLogout);
             if (smAuthInfo.getAuthStatus() != SMAuthStatus.IN_PROGRESS) {
@@ -249,7 +249,7 @@ public class WebServiceAuthImpl implements DBWServiceAuth {
             List<WebAuthInfo> removedInfos = webSession.removeAuthInfo(providerId);
             var cbApp = CBApplication.getInstance();
 
-            List<String> logoutUrls = new ArrayList<>();
+            List<WebLogoutLink> redirectLinks = new ArrayList<>();
             String origin = ServletAppUtils.getOriginFromRequest(httpRequest);
             for (WebAuthInfo removedInfo : removedInfos) {
                 if (removedInfo.getAuthProviderDescriptor()
@@ -274,11 +274,14 @@ public class WebServiceAuthImpl implements DBWServiceAuth {
                         );
                     }
                     if (CommonUtils.isNotEmpty(logoutUrl)) {
-                        logoutUrls.add(logoutUrl);
+                        redirectLinks.add(new WebLogoutLink(
+                            logoutUrl,
+                            removedInfo.getAuthProviderDescriptor().isSameTabRedirectOnLogout()
+                        ));
                     }
                 }
             }
-            return new WebLogoutInfo(logoutUrls);
+            return new WebLogoutInfo(redirectLinks);
         } catch (DBException e) {
             throw new DBWebException("User logout failed", e);
         }

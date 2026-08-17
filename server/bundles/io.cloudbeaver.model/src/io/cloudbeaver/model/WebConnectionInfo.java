@@ -72,6 +72,11 @@ public class WebConnectionInfo {
     private static final String FEATURE_PROVIDED = "provided";
     private static final String FEATURE_MANAGEABLE = "manageable";
 
+    private static final String FEATURE_RESTRICT_DATA_EDIT = "restrictDataEdit";
+    private static final String FEATURE_RESTRICT_SCRIPT_EXECUTE = "restrictScriptExecute";
+    private static final String FEATURE_RESTRICT_DATA_IMPORT = "restrictDataImport";
+    private static final String FEATURE_RESTRICT_METADATA_EDIT = "restrictMetadataEdit";
+
     private static final String TOOL_SESSION_MANAGER = "sessionManager";
     
     private final WebSession session;
@@ -275,6 +280,18 @@ public class WebConnectionInfo {
         if (dataSourceContainer.isConnectionReadOnly()) {
             features.add(FEATURE_READ_ONLY);
         }
+        if (!dataSourceContainer.hasModifyPermission(DBPDataSourcePermission.PERMISSION_EDIT_DATA)) {
+            features.add(FEATURE_RESTRICT_DATA_EDIT);
+        }
+        if (!dataSourceContainer.hasModifyPermission(DBPDataSourcePermission.PERMISSION_EXECUTE_SCRIPTS)) {
+            features.add(FEATURE_RESTRICT_SCRIPT_EXECUTE);
+        }
+        if (!dataSourceContainer.hasModifyPermission(DBPDataSourcePermission.PERMISSION_IMPORT_DATA)) {
+            features.add(FEATURE_RESTRICT_DATA_IMPORT);
+        }
+        if (!dataSourceContainer.hasModifyPermission(DBPDataSourcePermission.PERMISSION_EDIT_METADATA)) {
+            features.add(FEATURE_RESTRICT_METADATA_EDIT);
+        }
         if (dataSourceContainer.isProvided()) {
             features.add(FEATURE_PROVIDED);
         }
@@ -467,7 +484,7 @@ public class WebConnectionInfo {
     @Property
     public Map<String, Object> getExpertSettingsValues() {
         Map<String, Object> expertSettings = new LinkedHashMap<>();
-        expertSettings.put(WebExpertSettingsProperties.PROP_AUTO_COMMIT, isAutocommit());
+        expertSettings.put(WebExpertSettingsProperties.PROP_AUTO_COMMIT_MODE, AutoCommitMode.fromValue(isAutocommit()));
         expertSettings.put(WebExpertSettingsProperties.PROP_KEEP_ALIVE_INTERVAL, getKeepAliveInterval());
         expertSettings.put(WebExpertSettingsProperties.PROP_READ_ONLY, isReadOnly());
         expertSettings.put(WebExpertSettingsProperties.PROP_DEFAULT_CATALOG, getDefaultCatalogName());
@@ -541,12 +558,9 @@ public class WebConnectionInfo {
     }
 
     @Property
-    public boolean isAutocommit() {
-        Boolean isAutoCommit = dataSourceContainer.getConnectionConfiguration().getBootstrap().getDefaultAutoCommit();
-        if (isAutoCommit == null) {
-            return true;
-        }
-        return isAutoCommit;
+    @Nullable
+    public Boolean isAutocommit() {
+        return dataSourceContainer.getConnectionConfiguration().getBootstrap().getDefaultAutoCommit();
     }
 
     @Property
@@ -596,6 +610,15 @@ public class WebConnectionInfo {
      */
     public void setCredentialsSavedInSession(@Nullable Boolean credentialsSavedInSession) {
         this.credentialsSavedInSession = credentialsSavedInSession;
+    }
+
+    /**
+     * Database-dependent driver configuration used to drive data import
+     */
+    @Property
+    @NotNull
+    public WebDriverConfiguration getDriverConfiguration() {
+        return new WebDriverConfiguration(dataSourceContainer);
     }
 
 }
