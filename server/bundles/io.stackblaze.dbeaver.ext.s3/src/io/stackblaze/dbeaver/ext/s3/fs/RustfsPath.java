@@ -43,6 +43,18 @@ public class RustfsPath extends NIOPath {
         return fileSystem;
     }
 
+    /**
+     * NIOPath.toString() returns the full URI, which the navigator and the
+     * Cloud Storage panel use as the display name (getFileName().toString()).
+     * Return the plain object path instead so files show as "inv-1001.json",
+     * not "s3://connection-id/inv-1001.json". Kept consistent for both sides
+     * of NIOPath's toString-based startsWith/endsWith comparisons.
+     */
+    @Override
+    public String toString() {
+        return CommonUtils.isEmpty(path) ? getConnectionId() : path;
+    }
+
     @NotNull
     public String getConnectionId() {
         return fileSystem.getConnectionId();

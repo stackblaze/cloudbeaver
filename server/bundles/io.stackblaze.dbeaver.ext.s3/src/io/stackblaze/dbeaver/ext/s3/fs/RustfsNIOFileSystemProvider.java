@@ -297,12 +297,18 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         try {
             Item item = iterator.next().get();
             if (item.isDir()) {
-                return type.cast(new RustfsFolderAttribute(FileTime.fromMillis(item.lastModified().toInstant().toEpochMilli())));
+                return type.cast(new RustfsFolderAttribute(itemModified(item)));
             }
             return type.cast(new RustfsObjectAttribute(item));
         } catch (Exception e) {
             throw new IOException("Failed to read S3 attributes: " + e.getMessage(), e);
         }
+    }
+
+    /** Folder entries (common prefixes) carry no lastModified — treat as epoch. */
+    private static FileTime itemModified(Item item) {
+        var modified = item.lastModified();
+        return FileTime.fromMillis(modified != null ? modified.toInstant().toEpochMilli() : 0L);
     }
 
     private static final class RustfsFolderAttribute extends NIOFileBasicAttribute {
@@ -337,7 +343,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
 
         @Override
         public FileTime lastModifiedTime() {
-            return FileTime.fromMillis(item.lastModified().toInstant().toEpochMilli());
+            return itemModified(item);
         }
 
         @Override
