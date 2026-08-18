@@ -48,6 +48,36 @@ public class WebServiceFS implements DBWServiceFS {
 
     private static final Pattern FORBIDDEN_FILENAME_PATTERN = Pattern.compile("[%#:;№$]");
 
+    /**
+     * Resolve the navigator node for a just-created (or just-moved) child.
+     * <p>
+     * DBNPathBase caches children lazily: both addChildResource() and getChild()
+     * return without doing anything while that cache is null, which it is for any
+     * folder the user has not expanded. Creating a folder inside a collapsed
+     * folder therefore produced an FSFile wrapping a null node, and the failure
+     * only surfaced when GraphQL fetched its properties — as an NPE on
+     * DBNPathBase.getNodeDisplayName() with nothing pointing at the real cause.
+     * Read the children (which also picks up the new entry from storage) before
+     * giving up, and fail with something legible if it still is not there.
+     */
+    @NotNull
+    private static DBNPathBase resolveChildNode(
+        @NotNull WebSession webSession,
+        @NotNull DBNPathBase parentNode,
+        @NotNull Path childPath
+    ) throws DBException {
+        DBNPathBase child = parentNode.getChild(childPath);
+        if (child == null) {
+            parentNode.getChildren(webSession.getProgressMonitor());
+            child = parentNode.getChild(childPath);
+        }
+        if (child == null) {
+            throw new DBException(
+                MessageFormat.format("Node ''{0}'' not found after the operation", childPath));
+        }
+        return child;
+    }
+
     @NotNull
     @Override
     public FSFileSystem[] getAvailableFileSystems(@NotNull WebSession webSession, @NotNull String projectId) throws DBWebException {
@@ -194,7 +224,7 @@ public class WebServiceFS implements DBWServiceFS {
             Path filePath = parentNode.getPath().resolve(fileName);
             Files.createFile(filePath);
             parentNode.addChildResource(filePath);
-            return new FSFile(parentNode.getChild(filePath));
+            return new FSFile(resolveChildNode(webSession, parentNode, filePath));
         } catch (Exception e) {
             throw new DBWebException("Failed to create file: " + e.getMessage(), e);
         }
@@ -220,7 +250,7 @@ public class WebServiceFS implements DBWServiceFS {
             // apply changes in navigator node
             oldParentNode.removeChildResource(oldNode.getPath());
             parentNode.addChildResource(to);
-            return new FSFile(parentNode.getChild(to));
+            return new FSFile(resolveChildNode(webSession, parentNode, to));
         } catch (NoSuchFileException e) {
             throw new DBWebException("File not found. Please refresh the catalog and check if file exists.");
         } catch (Exception e) {
@@ -262,7 +292,7 @@ public class WebServiceFS implements DBWServiceFS {
             }
             Path to = Files.copy(oldNode.getPath(), parentPath.resolve(fileName));
             parentNode.addChildResource(to);
-            return new FSFile(parentNode.getChild(to));
+            return new FSFile(resolveChildNode(webSession, parentNode, to));
         } catch (Exception e) {
             throw new DBWebException("Failed to copy file: " + e.getMessage(), e);
         }
@@ -284,7 +314,7 @@ public class WebServiceFS implements DBWServiceFS {
             Path folderPath = parentNode.getPath().resolve(folderName);
             Files.createDirectory(folderPath);
             parentNode.addChildResource(folderPath);
-            return new FSFile(parentNode.getChild(folderPath));
+            return new FSFile(resolveChildNode(webSession, parentNode, folderPath));
         } catch (Exception e) {
             throw new DBWebException("Failed to create folder: " + e.getMessage(), e);
         }

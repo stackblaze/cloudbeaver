@@ -55,6 +55,29 @@ public class RustfsPath extends NIOPath {
         return CommonUtils.isEmpty(path) ? getConnectionId() : path;
     }
 
+    /**
+     * NIOPath inherits Object identity for equals/hashCode, which breaks every
+     * lookup that matches a path against a freshly listed one — notably
+     * DBNPathBase.getChild(), where two RustfsPath instances for the same key
+     * compared unequal and a just-created folder could not be resolved. Two
+     * paths are the same path when they name the same key on the same mount.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof RustfsPath other)) {
+            return false;
+        }
+        return fileSystem == other.fileSystem && CommonUtils.equalObjects(path, other.path);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(System.identityHashCode(fileSystem), path);
+    }
+
     @NotNull
     public String getConnectionId() {
         return fileSystem.getConnectionId();
