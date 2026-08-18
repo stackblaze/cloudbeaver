@@ -15,6 +15,9 @@ import { ACTION_DELETE, ACTION_DOWNLOAD, ACTION_NEW_FOLDER, ACTION_OPEN, ACTION_
 import { MENU_NAV_TREE } from '@cloudbeaver/plugin-navigation-tree';
 import { MENU_TOOLS, ToolsPanelService } from '@cloudbeaver/plugin-tools-panel';
 
+import { ACTION_CLOUD_STORAGE_BUCKET_EVENTS } from './Actions/ACTION_CLOUD_STORAGE_BUCKET_EVENTS.js';
+import { ACTION_CLOUD_STORAGE_BUCKET_POLICY } from './Actions/ACTION_CLOUD_STORAGE_BUCKET_POLICY.js';
+import { ACTION_CLOUD_STORAGE_OBJECT_PROPERTIES } from './Actions/ACTION_CLOUD_STORAGE_OBJECT_PROPERTIES.js';
 import { ACTION_CLOUD_STORAGE_COPY } from './Actions/ACTION_CLOUD_STORAGE_COPY.js';
 import { ACTION_CLOUD_STORAGE_COPY_URI } from './Actions/ACTION_CLOUD_STORAGE_COPY_URI.js';
 import { ACTION_CLOUD_STORAGE_CREATE_BUCKET } from './Actions/ACTION_CLOUD_STORAGE_CREATE_BUCKET.js';
@@ -22,10 +25,13 @@ import { ACTION_CLOUD_STORAGE_ENABLE } from './Actions/ACTION_CLOUD_STORAGE_ENAB
 import { ACTION_CLOUD_STORAGE_MOVE } from './Actions/ACTION_CLOUD_STORAGE_MOVE.js';
 import { ACTION_CLOUD_STORAGE_PASTE } from './Actions/ACTION_CLOUD_STORAGE_PASTE.js';
 import { ACTION_CLOUD_STORAGE_UPLOAD } from './Actions/ACTION_CLOUD_STORAGE_UPLOAD.js';
+import { CloudStorageBucketDialog } from './CloudStoragePanel/CloudStorageBucketDialog.js';
+import { CloudStorageObjectDialog } from './CloudStoragePanel/CloudStorageObjectDialog.js';
 import { CloudStorageDuckDbService } from './CloudStorageDuckDbService.js';
 import { CloudStorageFileService } from './CloudStorageFileService.js';
 import { CloudStorageService } from './CloudStorageService.js';
 import { getParentNodeUri } from './pathUtils.js';
+import { pickLocalFiles } from './uploadUtils.js';
 
 const CloudStoragePanel = importLazyComponent(() => import('./CloudStoragePanel/CloudStoragePanel.js').then(m => m.CloudStoragePanel));
 
@@ -84,6 +90,11 @@ export class CloudStorageBootstrap extends Bootstrap {
     return !!fsPath && /^s3:\/\/[^/]+\/[^/]+\/./.test(fsPath);
   }
 
+  /** Bucket root (`s3://<fsId>/<bucket>`), not an object or the store root. */
+  private isBucket(fsPath: string | null): boolean {
+    return !!fsPath && /^s3:\/\/[^/]+\/[^/]+\/?$/.test(fsPath);
+  }
+
   override register(): void {
     this.menuService.addCreator({
       menus: [MENU_TOOLS],
@@ -124,6 +135,7 @@ export class CloudStorageBootstrap extends Bootstrap {
         ACTION_CLOUD_STORAGE_COPY,
         ACTION_CLOUD_STORAGE_MOVE,
         ACTION_CLOUD_STORAGE_COPY_URI,
+        ACTION_CLOUD_STORAGE_OBJECT_PROPERTIES,
         ACTION_RENAME,
         ACTION_DELETE,
       ],
@@ -139,15 +151,22 @@ export class CloudStorageBootstrap extends Bootstrap {
         const fsPath = this.fsPath(node);
         return !!node && this.isEntry(fsPath) && !this.isFile(node!, fsPath);
       },
-      getItems: (context, items) => [
-        ...items,
-        ACTION_CLOUD_STORAGE_UPLOAD,
-        ACTION_NEW_FOLDER,
-        ACTION_CLOUD_STORAGE_COPY,
-        ACTION_CLOUD_STORAGE_MOVE,
-        ACTION_CLOUD_STORAGE_PASTE,
-        ACTION_DELETE,
-      ],
+      getItems: (context, items) => {
+        const node = context.get(DATA_CONTEXT_NAV_NODE);
+        const bucketActions = this.isBucket(this.fsPath(node))
+          ? [ACTION_CLOUD_STORAGE_BUCKET_POLICY, ACTION_CLOUD_STORAGE_BUCKET_EVENTS]
+          : [];
+        return [
+          ...items,
+          ACTION_CLOUD_STORAGE_UPLOAD,
+          ACTION_NEW_FOLDER,
+          ACTION_CLOUD_STORAGE_COPY,
+          ACTION_CLOUD_STORAGE_MOVE,
+          ACTION_CLOUD_STORAGE_PASTE,
+          ...bucketActions,
+          ACTION_DELETE,
+        ];
+      },
     });
 
     // Storage root: create buckets.
@@ -175,6 +194,9 @@ export class CloudStorageBootstrap extends Bootstrap {
         ACTION_CLOUD_STORAGE_UPLOAD,
         ACTION_NEW_FOLDER,
         ACTION_CLOUD_STORAGE_CREATE_BUCKET,
+        ACTION_CLOUD_STORAGE_BUCKET_POLICY,
+        ACTION_CLOUD_STORAGE_BUCKET_EVENTS,
+        ACTION_CLOUD_STORAGE_OBJECT_PROPERTIES,
       ],
       contexts: [DATA_CONTEXT_NAV_NODE],
       isActionApplicable: (context, action) => {
@@ -185,6 +207,12 @@ export class CloudStorageBootstrap extends Bootstrap {
         }
         if (action === ACTION_CLOUD_STORAGE_CREATE_BUCKET) {
           return this.isStorageRoot(fsPath);
+        }
+        if (action === ACTION_CLOUD_STORAGE_BUCKET_POLICY || action === ACTION_CLOUD_STORAGE_BUCKET_EVENTS) {
+          return this.isBucket(fsPath);
+        }
+        if (action === ACTION_CLOUD_STORAGE_OBJECT_PROPERTIES) {
+          return this.isFile(node, fsPath);
         }
         if (!this.isEntry(fsPath)) {
           return false;
@@ -302,6 +330,18 @@ export class CloudStorageBootstrap extends Bootstrap {
               await this.navNodeManagerService.refreshTree(node.uri);
               break;
             }
+            case ACTION_CLOUD_STORAGE_OBJECT_PROPERTIES: {
+              await this.commonDialogService.open(CloudStorageObjectDialog, { nodePath: node.uri });
+              break;
+            }
+            case ACTION_CLOUD_STORAGE_BUCKET_POLICY:
+            case ACTION_CLOUD_STORAGE_BUCKET_EVENTS: {
+              await this.commonDialogService.open(CloudStorageBucketDialog, {
+                nodePath: node.uri,
+                tab: action === ACTION_CLOUD_STORAGE_BUCKET_EVENTS ? 'events' : 'policy',
+              });
+              break;
+            }
             case ACTION_CLOUD_STORAGE_CREATE_BUCKET:
             case ACTION_NEW_FOLDER: {
               const bucket = action === ACTION_CLOUD_STORAGE_CREATE_BUCKET;
@@ -338,20 +378,8 @@ export class CloudStorageBootstrap extends Bootstrap {
     });
   }
 
-  private uploadTo(parentNodePath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.multiple = true;
-      input.onchange = async () => {
-        try {
-          await this.cloudStorageService.uploadFiles(parentNodePath, Array.from(input.files ?? []));
-          resolve();
-        } catch (exception) {
-          reject(exception);
-        }
-      };
-      input.click();
-    });
+  private async uploadTo(parentNodePath: string): Promise<void> {
+    const files = await pickLocalFiles();
+    await this.cloudStorageService.uploadFiles(parentNodePath, files);
   }
 }

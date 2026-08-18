@@ -38,7 +38,10 @@ import { CloudStorageFileService } from '../CloudStorageFileService.js';
 import { CloudStorageService, type CloudStorageClipboardMode } from '../CloudStorageService.js';
 import { formatFileSize } from '../pathUtils.js';
 import type { IFSFile } from '../queries/queries.js';
+import { pickLocalFiles, uploadItemsFromDataTransfer } from '../uploadUtils.js';
+import { CloudStorageBucketDialog, type CloudStorageBucketTab } from './CloudStorageBucketDialog.js';
 import { CloudStorageDestinationDialog } from './CloudStorageDestinationDialog.js';
+import { CloudStorageObjectDialog, type CloudStorageObjectTab } from './CloudStorageObjectDialog.js';
 import style from './CloudStoragePanel.module.css';
 
 interface IContextMenu {
@@ -107,13 +110,21 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
       return;
     }
 
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.onchange = () => {
-      void run(() => cloudStorageService.uploadFiles(cloudStorageService.currentPath!, Array.from(input.files ?? [])));
-    };
-    input.click();
+    const files = await pickLocalFiles();
+    if (files.length) {
+      void run(() => cloudStorageService.uploadFiles(cloudStorageService.currentPath!, files));
+    }
+  }, [cloudStorageService, run]);
+
+  const uploadFolder = useCallback(async () => {
+    if (!cloudStorageService.currentPath || !cloudStorageService.canUpload) {
+      return;
+    }
+
+    const files = await pickLocalFiles(true);
+    if (files.length) {
+      void run(() => cloudStorageService.uploadFiles(cloudStorageService.currentPath!, files));
+    }
   }, [cloudStorageService, run]);
 
   const createFolder = useCallback(async () => {
@@ -233,6 +244,20 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
     [cloudStorageService],
   );
 
+  const openBucketSettings = useCallback(
+    async (nodePath: string, tab: CloudStorageBucketTab = 'policy') => {
+      await commonDialogService.open(CloudStorageBucketDialog, { nodePath, tab });
+    },
+    [commonDialogService],
+  );
+
+  const openObjectSettings = useCallback(
+    async (nodePath: string, tab: CloudStorageObjectTab = 'info') => {
+      await commonDialogService.open(CloudStorageObjectDialog, { nodePath, tab });
+    },
+    [commonDialogService],
+  );
+
   const copyUri = useCallback(
     async (file: IFSFile) => {
       await navigator.clipboard.writeText(cloudStorageService.getS3Uri(file.nodePath));
@@ -247,10 +272,13 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
         return;
       }
 
-      const files = Array.from(event.dataTransfer.files);
-      if (files.length) {
-        void run(() => cloudStorageService.uploadFiles(cloudStorageService.currentPath!, files));
-      }
+      const parentPath = cloudStorageService.currentPath;
+      // webkitGetAsEntry must run during the drop event, before the async gap.
+      const itemsPromise = uploadItemsFromDataTransfer(event.dataTransfer);
+      void run(async () => {
+        const items = await itemsPromise;
+        await cloudStorageService.uploadItems(parentPath, items);
+      });
     },
     [cloudStorageService, run],
   );
@@ -274,6 +302,13 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
           onClick={upload}
         >
           {translate('plugin_cloud_storage_upload')}
+        </ToolsAction>
+        <ToolsAction
+          title={translate('plugin_cloud_storage_upload_folder')}
+          disabled={!cloudStorageService.canUpload}
+          onClick={uploadFolder}
+        >
+          {translate('plugin_cloud_storage_upload_folder')}
         </ToolsAction>
         <ToolsAction
           icon="/icons/folder_sm.svg"
@@ -300,6 +335,32 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
         <ToolsAction title={translate('plugin_cloud_storage_paste')} disabled={!cloudStorageService.canPasteHere} onClick={paste}>
           {translate('plugin_cloud_storage_paste')}
         </ToolsAction>
+        <ToolsAction
+          title={translate('plugin_cloud_storage_bucket_policy')}
+          disabled={!cloudStorageService.bucketSettingsPath}
+          onClick={() => void openBucketSettings(cloudStorageService.bucketSettingsPath!, 'policy')}
+        >
+          {translate('plugin_cloud_storage_bucket_policy')}
+        </ToolsAction>
+        <ToolsAction
+          title={translate('plugin_cloud_storage_bucket_events')}
+          disabled={!cloudStorageService.bucketSettingsPath}
+          onClick={() => void openBucketSettings(cloudStorageService.bucketSettingsPath!, 'events')}
+        >
+          {translate('plugin_cloud_storage_bucket_events')}
+        </ToolsAction>
+        <ToolsAction
+          title={translate('plugin_cloud_storage_object_properties')}
+          disabled={selectedFilesOnly.length !== 1}
+          onClick={() => void openObjectSettings(selectedFilesOnly[0]!.nodePath)}
+        >
+          {translate('plugin_cloud_storage_object_properties')}
+        </ToolsAction>
+        {cloudStorageService.canResume && (
+          <ToolsAction title={translate('plugin_cloud_storage_resume')} onClick={() => run(() => cloudStorageService.resumeLastJob())}>
+            {translate('plugin_cloud_storage_resume')}
+          </ToolsAction>
+        )}
         <ToolsAction title={translate('ui_rename')} disabled={selected.length !== 1} onClick={() => rename()}>
           {translate('ui_rename')}
         </ToolsAction>
@@ -422,6 +483,45 @@ export const CloudStoragePanel = observer(function CloudStoragePanel() {
                 }}
               >
                 {translate('plugin_cloud_storage_download')}
+              </button>
+            )}
+            {cloudStorageService.isBucketPath(menu.file.nodePath) && (
+              <>
+                {(['policy', 'events', 'versioning', 'encryption', 'tags'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={s(styles, { contextMenuItem: true })}
+                    onClick={() => {
+                      setMenu(null);
+                      void openBucketSettings(menu.file.nodePath, tab);
+                    }}
+                  >
+                    {translate(
+                      tab === 'policy'
+                        ? 'plugin_cloud_storage_bucket_policy'
+                        : tab === 'events'
+                          ? 'plugin_cloud_storage_bucket_events'
+                          : tab === 'versioning'
+                            ? 'plugin_cloud_storage_bucket_versioning'
+                            : tab === 'encryption'
+                              ? 'plugin_cloud_storage_bucket_encryption'
+                              : 'plugin_cloud_storage_bucket_tags',
+                    )}
+                  </button>
+                ))}
+              </>
+            )}
+            {!menu.file.folder && (
+              <button
+                type="button"
+                className={s(styles, { contextMenuItem: true })}
+                onClick={() => {
+                  setMenu(null);
+                  void openObjectSettings(menu.file.nodePath);
+                }}
+              >
+                {translate('plugin_cloud_storage_object_properties')}
               </button>
             )}
             {cloudStorageService.isObjectPath(menu.file.nodePath) && (

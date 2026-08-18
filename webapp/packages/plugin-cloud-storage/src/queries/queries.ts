@@ -61,6 +61,44 @@ export const FS_MOVE_MUTATION = `
   }
 `;
 
+export const FS_TRANSFER_MUTATION = `
+  mutation fsTransfer($nodePaths: [String!]!, $toParentNodePath: String!, $mode: FSTransferMode!, $resume: Boolean) {
+    taskInfo: fsTransfer(nodePaths: $nodePaths, toParentNodePath: $toParentNodePath, mode: $mode, resume: $resume) {
+      id
+      name
+      running
+      status
+      taskResult
+      error {
+        message
+        errorCode
+        errorType
+        stackTrace
+      }
+    }
+  }
+`;
+
+export type FSTransferMode = 'COPY' | 'MOVE';
+
+export interface FsAsyncTaskInfo {
+  id: string;
+  name?: string | null;
+  running: boolean;
+  status?: string | null;
+  taskResult?: unknown;
+  error?: {
+    message?: string | null;
+    errorCode?: string | null;
+    errorType?: string | null;
+    stackTrace?: string | null;
+  } | null;
+}
+
+export interface FsTransferResult {
+  taskInfo: FsAsyncTaskInfo;
+}
+
 export const FS_RENAME_MUTATION = `
   mutation fsRename($nodePath: String!, $newName: String!) {
     file: fsRename(nodePath: $nodePath, newName: $newName) {
@@ -73,6 +111,197 @@ export const FS_RENAME_MUTATION = `
 export const FS_READ_FILE_CONTENT_QUERY = `
   query fsReadFileContentAsString($nodePath: String!) {
     content: fsReadFileContentAsString(nodePath: $nodePath)
+  }
+`;
+
+export const FS_GET_BUCKET_POLICY_QUERY = `
+  query fsGetBucketPolicy($nodePath: String!) {
+    policy: fsGetBucketPolicy(nodePath: $nodePath)
+  }
+`;
+
+export const FS_SET_BUCKET_POLICY_MUTATION = `
+  mutation fsSetBucketPolicy($nodePath: String!, $policy: String!) {
+    fsSetBucketPolicy(nodePath: $nodePath, policy: $policy)
+  }
+`;
+
+export const FS_GET_BUCKET_NOTIFICATION_QUERY = `
+  query fsGetBucketNotification($nodePath: String!) {
+    notification: fsGetBucketNotification(nodePath: $nodePath) {
+      events
+      targetArn
+    }
+  }
+`;
+
+export const FS_SET_BUCKET_NOTIFICATION_MUTATION = `
+  mutation fsSetBucketNotification($nodePath: String!, $events: [String!]!, $targetArn: String) {
+    fsSetBucketNotification(nodePath: $nodePath, events: $events, targetArn: $targetArn)
+  }
+`;
+
+export const FS_REMOVE_BUCKET_NOTIFICATION_MUTATION = `
+  mutation fsRemoveBucketNotification($nodePath: String!) {
+    fsRemoveBucketNotification(nodePath: $nodePath)
+  }
+`;
+
+export const FS_GET_STACKBLAZE_CONTEXT_QUERY = `
+  query fsGetStackblazeContext($nodePath: String!) {
+    context: fsGetStackblazeContext(nodePath: $nodePath) {
+      pipeline
+      phase
+      instance
+    }
+  }
+`;
+
+export interface IFSBucketNotification {
+  events: string[];
+  targetArn?: string | null;
+}
+
+export interface IFSStackblazeContext {
+  pipeline?: string | null;
+  phase?: string | null;
+  instance?: string | null;
+}
+
+export interface IFSTag {
+  key: string;
+  value: string;
+}
+
+export interface IFSBucketEncryption {
+  algorithm?: string | null;
+  kmsKeyId?: string | null;
+}
+
+export interface IFSObjectInfo {
+  size: number;
+  etag?: string | null;
+  lastModified?: string | null;
+  storageClass?: string | null;
+  versionId?: string | null;
+  encryption?: string | null;
+}
+
+export interface IFSObjectVersion {
+  versionId?: string | null;
+  latest: boolean;
+  deleteMarker: boolean;
+  size: number;
+  etag?: string | null;
+  lastModified?: string | null;
+  storageClass?: string | null;
+}
+
+export const FS_GET_BUCKET_VERSIONING_QUERY = `
+  query fsGetBucketVersioning($nodePath: String!) {
+    status: fsGetBucketVersioning(nodePath: $nodePath)
+  }
+`;
+
+export const FS_SET_BUCKET_VERSIONING_MUTATION = `
+  mutation fsSetBucketVersioning($nodePath: String!, $status: String!) {
+    fsSetBucketVersioning(nodePath: $nodePath, status: $status)
+  }
+`;
+
+export const FS_GET_BUCKET_ENCRYPTION_QUERY = `
+  query fsGetBucketEncryption($nodePath: String!) {
+    encryption: fsGetBucketEncryption(nodePath: $nodePath) {
+      algorithm
+      kmsKeyId
+    }
+  }
+`;
+
+export const FS_SET_BUCKET_ENCRYPTION_MUTATION = `
+  mutation fsSetBucketEncryption($nodePath: String!, $algorithm: String!, $kmsKeyId: String) {
+    fsSetBucketEncryption(nodePath: $nodePath, algorithm: $algorithm, kmsKeyId: $kmsKeyId)
+  }
+`;
+
+export const FS_REMOVE_BUCKET_ENCRYPTION_MUTATION = `
+  mutation fsRemoveBucketEncryption($nodePath: String!) {
+    fsRemoveBucketEncryption(nodePath: $nodePath)
+  }
+`;
+
+export const FS_GET_BUCKET_TAGS_QUERY = `
+  query fsGetBucketTags($nodePath: String!) {
+    tags: fsGetBucketTags(nodePath: $nodePath) {
+      key
+      value
+    }
+  }
+`;
+
+export const FS_SET_BUCKET_TAGS_MUTATION = `
+  mutation fsSetBucketTags($nodePath: String!, $tags: [FSTagInput!]!) {
+    fsSetBucketTags(nodePath: $nodePath, tags: $tags)
+  }
+`;
+
+export const FS_GET_OBJECT_TAGS_QUERY = `
+  query fsGetObjectTags($nodePath: String!) {
+    tags: fsGetObjectTags(nodePath: $nodePath) {
+      key
+      value
+    }
+  }
+`;
+
+export const FS_SET_OBJECT_TAGS_MUTATION = `
+  mutation fsSetObjectTags($nodePath: String!, $tags: [FSTagInput!]!) {
+    fsSetObjectTags(nodePath: $nodePath, tags: $tags)
+  }
+`;
+
+export const FS_DELETE_OBJECT_TAGS_MUTATION = `
+  mutation fsDeleteObjectTags($nodePath: String!) {
+    fsDeleteObjectTags(nodePath: $nodePath)
+  }
+`;
+
+export const FS_GET_OBJECT_INFO_QUERY = `
+  query fsGetObjectInfo($nodePath: String!, $versionId: String) {
+    info: fsGetObjectInfo(nodePath: $nodePath, versionId: $versionId) {
+      size
+      etag
+      lastModified
+      storageClass
+      versionId
+      encryption
+    }
+  }
+`;
+
+export const FS_LIST_OBJECT_VERSIONS_QUERY = `
+  query fsListObjectVersions($nodePath: String!) {
+    versions: fsListObjectVersions(nodePath: $nodePath) {
+      versionId
+      latest
+      deleteMarker
+      size
+      etag
+      lastModified
+      storageClass
+    }
+  }
+`;
+
+export const FS_DELETE_OBJECT_VERSION_MUTATION = `
+  mutation fsDeleteObjectVersion($nodePath: String!, $versionId: String!) {
+    fsDeleteObjectVersion(nodePath: $nodePath, versionId: $versionId)
+  }
+`;
+
+export const FS_RESTORE_OBJECT_VERSION_MUTATION = `
+  mutation fsRestoreObjectVersion($nodePath: String!, $versionId: String!) {
+    fsRestoreObjectVersion(nodePath: $nodePath, versionId: $versionId)
   }
 `;
 

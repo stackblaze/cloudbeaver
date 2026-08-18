@@ -15,6 +15,56 @@ type FSFile @since(version: "23.2.2") {
     nodePath: String!
 }
 
+enum FSTransferMode {
+    COPY
+    MOVE
+}
+
+type FSBucketNotification {
+    events: [String!]!
+    targetArn: String
+}
+
+type FSStackblazeContext {
+    pipeline: String
+    phase: String
+    instance: String
+}
+
+type FSTag {
+    key: String!
+    value: String!
+}
+
+input FSTagInput {
+    key: String!
+    value: String!
+}
+
+type FSBucketEncryption {
+    algorithm: String
+    kmsKeyId: String
+}
+
+type FSObjectVersion {
+    versionId: String
+    latest: Boolean!
+    deleteMarker: Boolean!
+    size: Int!
+    etag: String
+    lastModified: String
+    storageClass: String
+}
+
+type FSObjectInfo {
+    size: Int!
+    etag: String
+    lastModified: String
+    storageClass: String
+    versionId: String
+    encryption: String
+}
+
 type FSFileSystem @since(version: "23.2.4") {
     "File system ID"
     id: ID!
@@ -39,6 +89,26 @@ extend type Query @since(version: "23.2.2") {
 
     "Reads file contents as string in UTF-8"
     fsReadFileContentAsString(nodePath: String!): String!
+
+    "S3 bucket policy JSON for the bucket that contains this node"
+    fsGetBucketPolicy(nodePath: String!): String!
+
+    "S3 notification configuration for the bucket that contains this node"
+    fsGetBucketNotification(nodePath: String!): FSBucketNotification!
+
+    "Pipeline / phase / addon instance inferred from the RustFS connection name"
+    fsGetStackblazeContext(nodePath: String!): FSStackblazeContext!
+
+    "Bucket versioning: Off, Enabled, or Suspended"
+    fsGetBucketVersioning(nodePath: String!): String!
+
+    "Default bucket encryption (SSE-S3 / SSE-KMS), if configured"
+    fsGetBucketEncryption(nodePath: String!): FSBucketEncryption!
+
+    fsGetBucketTags(nodePath: String!): [FSTag!]!
+    fsGetObjectTags(nodePath: String!): [FSTag!]!
+    fsGetObjectInfo(nodePath: String!, versionId: String): FSObjectInfo!
+    fsListObjectVersions(nodePath: String!): [FSObjectVersion!]!
 }
 
 extend type Mutation @since(version: "23.2.2") {
@@ -60,10 +130,35 @@ extend type Mutation @since(version: "23.2.2") {
     "Copies file or folder to the specified parent path. Returns updated file info"
     fsCopy(nodePath: String!, toParentNodePath: String!): FSFile! @since(version: "23.2.5")
 
+    "Copies or moves many files/folders in a background task. Use asyncTaskInfo to follow progress. Set resume to skip objects already at the destination."
+    fsTransfer(nodePaths: [String!]!, toParentNodePath: String!, mode: FSTransferMode!, resume: Boolean): AsyncTaskInfo!
+
     "Writes string content to the file. If forceOverwrite is true then overwrites existing file, otherwise throws an error if file already exists"
     fsWriteFileStringContent(
         nodePath:String!,
         data: String!,
         forceOverwrite: Boolean!
     ): FSFile!
+
+    "Replaces the S3 bucket policy JSON"
+    fsSetBucketPolicy(nodePath: String!, policy: String!): Boolean!
+
+    "Replaces bucket notification rules (ObjectCreated / ObjectRemoved → webhook ARN)"
+    fsSetBucketNotification(nodePath: String!, events: [String!]!, targetArn: String): Boolean!
+
+    "Removes all notification rules from the bucket"
+    fsRemoveBucketNotification(nodePath: String!): Boolean!
+
+    "Enable or suspend bucket versioning (Enabled / Suspended)"
+    fsSetBucketVersioning(nodePath: String!, status: String!): Boolean!
+
+    "Set default bucket encryption. algorithm AES256 or aws:kms (kmsKeyId required for KMS)"
+    fsSetBucketEncryption(nodePath: String!, algorithm: String!, kmsKeyId: String): Boolean!
+    fsRemoveBucketEncryption(nodePath: String!): Boolean!
+
+    fsSetBucketTags(nodePath: String!, tags: [FSTagInput!]!): Boolean!
+    fsSetObjectTags(nodePath: String!, tags: [FSTagInput!]!): Boolean!
+    fsDeleteObjectTags(nodePath: String!): Boolean!
+    fsDeleteObjectVersion(nodePath: String!, versionId: String!): Boolean!
+    fsRestoreObjectVersion(nodePath: String!, versionId: String!): Boolean!
 }

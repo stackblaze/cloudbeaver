@@ -3,19 +3,53 @@ package io.stackblaze.dbeaver.ext.s3.fs;
 import io.cloudbeaver.model.WebConnectionInfo;
 import io.minio.CopyObjectArgs;
 import io.minio.CopySource;
+import io.minio.DeleteBucketEncryptionArgs;
+import io.minio.DeleteBucketNotificationArgs;
+import io.minio.DeleteObjectTagsArgs;
 import io.minio.Directive;
+import io.minio.GetBucketEncryptionArgs;
+import io.minio.GetBucketNotificationArgs;
+import io.minio.GetBucketPolicyArgs;
+import io.minio.GetBucketTagsArgs;
+import io.minio.GetBucketVersioningArgs;
 import io.minio.GetObjectArgs;
+import io.minio.GetObjectTagsArgs;
 import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveBucketArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.SetBucketEncryptionArgs;
+import io.minio.SetBucketNotificationArgs;
+import io.minio.SetBucketPolicyArgs;
+import io.minio.SetBucketTagsArgs;
+import io.minio.SetBucketVersioningArgs;
+import io.minio.SetObjectTagsArgs;
+import io.minio.StatObjectArgs;
+import io.minio.StatObjectResponse;
 import io.minio.Result;
 import io.minio.messages.Bucket;
+import io.minio.messages.EventType;
 import io.minio.messages.Item;
+import io.minio.messages.NotificationConfiguration;
+import io.minio.messages.QueueConfiguration;
+import io.minio.messages.SseConfiguration;
+import io.minio.messages.SseConfigurationRule;
+import io.minio.messages.Tags;
+import io.minio.messages.VersioningConfiguration;
+import io.cloudbeaver.model.fs.FsBucketAdmin;
+import io.cloudbeaver.model.fs.FsBucketEncryption;
+import io.cloudbeaver.model.fs.FsBucketNotification;
+import io.cloudbeaver.model.fs.FsObjectInfo;
+import io.cloudbeaver.model.fs.FsObjectVersion;
+import io.cloudbeaver.model.fs.FsMultipartPart;
+import io.cloudbeaver.model.fs.FsMultipartUploader;
+import io.cloudbeaver.model.fs.FsStackblazeContext;
+import io.cloudbeaver.model.fs.FsTransferMonitor;
 import io.stackblaze.dbeaver.ext.s3.RustfsConstants;
 import org.jkiss.code.NotNull;
+import org.jkiss.code.Nullable;
 import org.jkiss.dbeaver.model.connection.DBPConnectionConfiguration;
 import org.jkiss.dbeaver.model.nio.NIOFileBasicAttribute;
 import org.jkiss.dbeaver.model.nio.NIOFileSystemProvider;
@@ -35,12 +69,14 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
+public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider implements FsMultipartUploader, FsBucketAdmin {
 
     @NotNull
     private final WebConnectionInfo connection;
@@ -143,6 +179,497 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
 
         RustfsByteArrayChannel.WriteSink sink = write ? data -> putObject(bucket, key, data) : null;
         return new RustfsByteArrayChannel(initial, options, sink);
+    }
+
+    @NotNull
+    @Override
+    public String startMultipart(@NotNull Path dest) throws IOException {
+        RustfsPath path = requireObjectPath(dest);
+        return RustfsS3V4Client.create(connection).createMultipart(path.getBucketName(), path.getObjectKey());
+    }
+
+    @NotNull
+    @Override
+    public String uploadPart(
+        @NotNull Path dest,
+        @NotNull String uploadId,
+        int partNumber,
+        @NotNull InputStream data,
+        long size
+    ) throws IOException {
+        RustfsPath path = requireObjectPath(dest);
+        return RustfsS3V4Client.create(connection)
+            .uploadPart(path.getBucketName(), path.getObjectKey(), uploadId, partNumber, data, size);
+    }
+
+    @Override
+    public void completeMultipart(
+        @NotNull Path dest,
+        @NotNull String uploadId,
+        @NotNull List<FsMultipartPart> parts
+    ) throws IOException {
+        RustfsPath path = requireObjectPath(dest);
+        RustfsS3V4Client.create(connection).complete(path.getBucketName(), path.getObjectKey(), uploadId, parts);
+    }
+
+    @Override
+    public void abortMultipart(@NotNull Path dest, @NotNull String uploadId) throws IOException {
+        RustfsPath path = requireObjectPath(dest);
+        RustfsS3V4Client.create(connection).abort(path.getBucketName(), path.getObjectKey(), uploadId);
+    }
+
+    @NotNull
+    @Override
+    public String getBucketPolicy(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            String policy = getMinioClient().getBucketPolicy(GetBucketPolicyArgs.builder().bucket(bucket).build());
+            return CommonUtils.isEmpty(policy) ? "{}" : policy;
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("no such")) {
+                return "{}";
+            }
+            throw new IOException("Failed to read bucket policy: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void setBucketPolicy(@NotNull Path bucketPath, @NotNull String policy) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            getMinioClient().setBucketPolicy(SetBucketPolicyArgs.builder().bucket(bucket).config(policy).build());
+        } catch (Exception e) {
+            throw new IOException("Failed to set bucket policy: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public FsBucketNotification getBucketNotification(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            NotificationConfiguration config = getMinioClient().getBucketNotification(
+                GetBucketNotificationArgs.builder().bucket(bucket).build()
+            );
+            java.util.LinkedHashSet<String> events = new java.util.LinkedHashSet<>();
+            String arn = null;
+            if (config != null && config.queueConfigurationList() != null) {
+                for (QueueConfiguration queue : config.queueConfigurationList()) {
+                    if (queue == null) {
+                        continue;
+                    }
+                    if (!CommonUtils.isEmpty(queue.queue())) {
+                        arn = queue.queue();
+                    }
+                    if (queue.events() != null) {
+                        for (EventType event : queue.events()) {
+                            events.add(event.toString());
+                        }
+                    }
+                }
+            }
+            return new FsBucketNotification(List.copyOf(events), arn);
+        } catch (Exception e) {
+            throw new IOException("Failed to read bucket notification: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void setBucketNotification(
+        @NotNull Path bucketPath,
+        @NotNull List<String> events,
+        @Nullable String targetArn
+    ) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        String arn = CommonUtils.isEmpty(targetArn) ? KUBERO_WEBHOOK_ARN : targetArn;
+        try {
+            QueueConfiguration queue = new QueueConfiguration();
+            queue.setQueue(arn);
+            java.util.LinkedList<EventType> eventTypes = new java.util.LinkedList<>();
+            for (String event : events) {
+                eventTypes.add(EventType.fromString(event));
+            }
+            queue.setEvents(eventTypes);
+            NotificationConfiguration config = new NotificationConfiguration();
+            java.util.LinkedList<QueueConfiguration> queues = new java.util.LinkedList<>();
+            queues.add(queue);
+            config.setQueueConfigurationList(queues);
+            getMinioClient().setBucketNotification(
+                SetBucketNotificationArgs.builder().bucket(bucket).config(config).build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to set bucket notification: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void removeBucketNotification(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            getMinioClient().deleteBucketNotification(DeleteBucketNotificationArgs.builder().bucket(bucket).build());
+        } catch (Exception e) {
+            throw new IOException("Failed to remove bucket notification: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public String getBucketVersioning(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            VersioningConfiguration config = getMinioClient().getBucketVersioning(
+                GetBucketVersioningArgs.builder().bucket(bucket).build()
+            );
+            if (config == null || config.status() == null || config.status() == VersioningConfiguration.Status.OFF) {
+                return "Off";
+            }
+            return config.status() == VersioningConfiguration.Status.SUSPENDED ? "Suspended" : "Enabled";
+        } catch (Exception e) {
+            throw new IOException("Failed to read bucket versioning: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void setBucketVersioning(@NotNull Path bucketPath, @NotNull String status) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        VersioningConfiguration.Status parsed;
+        try {
+            parsed = VersioningConfiguration.Status.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Versioning status must be Off, Enabled, or Suspended");
+        }
+        if (parsed == VersioningConfiguration.Status.OFF) {
+            throw new IOException("S3 cannot turn versioning Off after it has been enabled; use Suspended");
+        }
+        try {
+            getMinioClient().setBucketVersioning(
+                SetBucketVersioningArgs.builder()
+                    .bucket(bucket)
+                    .config(new VersioningConfiguration(parsed, null))
+                    .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to set bucket versioning: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public FsBucketEncryption getBucketEncryption(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            SseConfiguration config = getMinioClient().getBucketEncryption(
+                GetBucketEncryptionArgs.builder().bucket(bucket).build()
+            );
+            SseConfigurationRule rule = config == null ? null : config.rule();
+            if (rule == null || rule.sseAlgorithm() == null) {
+                return new FsBucketEncryption(null, null);
+            }
+            return new FsBucketEncryption(
+                rule.sseAlgorithm().toString(),
+                rule.kmsMasterKeyId()
+            );
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("not found")) {
+                return new FsBucketEncryption(null, null);
+            }
+            throw new IOException("Failed to read bucket encryption: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void setBucketEncryption(
+        @NotNull Path bucketPath,
+        @NotNull String algorithm,
+        @Nullable String kmsKeyId
+    ) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        SseConfiguration config;
+        if (!CommonUtils.isEmpty(kmsKeyId) || "aws:kms".equalsIgnoreCase(algorithm)) {
+            if (CommonUtils.isEmpty(kmsKeyId)) {
+                throw new IOException("KMS encryption requires a key id");
+            }
+            config = SseConfiguration.newConfigWithSseKmsRule(kmsKeyId);
+        } else {
+            config = SseConfiguration.newConfigWithSseS3Rule();
+        }
+        try {
+            getMinioClient().setBucketEncryption(
+                SetBucketEncryptionArgs.builder().bucket(bucket).config(config).build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to set bucket encryption: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void removeBucketEncryption(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            getMinioClient().deleteBucketEncryption(DeleteBucketEncryptionArgs.builder().bucket(bucket).build());
+        } catch (Exception e) {
+            throw new IOException("Failed to remove bucket encryption: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public Map<String, String> getBucketTags(@NotNull Path bucketPath) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            Tags tags = getMinioClient().getBucketTags(GetBucketTagsArgs.builder().bucket(bucket).build());
+            return tags == null || tags.get() == null ? Map.of() : new LinkedHashMap<>(tags.get());
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("not found")) {
+                return Map.of();
+            }
+            throw new IOException("Failed to read bucket tags: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void setBucketTags(@NotNull Path bucketPath, @NotNull Map<String, String> tags) throws IOException {
+        String bucket = requireBucketName(bucketPath);
+        try {
+            getMinioClient().setBucketTags(
+                SetBucketTagsArgs.builder().bucket(bucket).tags(Tags.newBucketTags(tags)).build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to set bucket tags: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public Map<String, String> getObjectTags(@NotNull Path objectPath) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            Tags tags = getMinioClient().getObjectTags(
+                GetObjectTagsArgs.builder().bucket(path.getBucketName()).object(path.getObjectKey()).build()
+            );
+            return tags == null || tags.get() == null ? Map.of() : new LinkedHashMap<>(tags.get());
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("not found")) {
+                return Map.of();
+            }
+            throw new IOException("Failed to read object tags: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void setObjectTags(@NotNull Path objectPath, @NotNull Map<String, String> tags) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            getMinioClient().setObjectTags(
+                SetObjectTagsArgs.builder()
+                    .bucket(path.getBucketName())
+                    .object(path.getObjectKey())
+                    .tags(Tags.newObjectTags(tags))
+                    .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to set object tags: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void deleteObjectTags(@NotNull Path objectPath) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            getMinioClient().deleteObjectTags(
+                DeleteObjectTagsArgs.builder().bucket(path.getBucketName()).object(path.getObjectKey()).build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to delete object tags: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public FsObjectInfo getObjectInfo(@NotNull Path objectPath, @Nullable String versionId) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            var builder = StatObjectArgs.builder().bucket(path.getBucketName()).object(path.getObjectKey());
+            if (!CommonUtils.isEmpty(versionId)) {
+                builder.versionId(versionId);
+            }
+            StatObjectResponse stat = getMinioClient().statObject(builder.build());
+            String encryption = null;
+            if (stat.headers() != null) {
+                encryption = stat.headers().get("X-Amz-Server-Side-Encryption");
+            }
+            return new FsObjectInfo(
+                stat.size(),
+                stat.etag(),
+                stat.lastModified() == null ? null : stat.lastModified().toString(),
+                CommonUtils.isEmpty(stat.storageClass()) ? "STANDARD" : stat.storageClass(),
+                stat.versionId(),
+                encryption
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to read object info: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public List<FsObjectVersion> listObjectVersions(@NotNull Path objectPath) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        String key = path.getObjectKey();
+        List<FsObjectVersion> versions = new ArrayList<>();
+        try {
+            Iterable<Result<Item>> results = getMinioClient().listObjects(
+                ListObjectsArgs.builder()
+                    .bucket(path.getBucketName())
+                    .prefix(key)
+                    .includeVersions(true)
+                    .recursive(false)
+                    .build()
+            );
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                if (item == null || !key.equals(item.objectName())) {
+                    continue;
+                }
+                versions.add(new FsObjectVersion(
+                    item.versionId(),
+                    item.isLatest(),
+                    item.isDeleteMarker(),
+                    item.size(),
+                    item.etag(),
+                    item.lastModified() == null ? null : item.lastModified().toString(),
+                    CommonUtils.isEmpty(item.storageClass()) ? "STANDARD" : item.storageClass()
+                ));
+            }
+            return versions;
+        } catch (Exception e) {
+            throw new IOException("Failed to list object versions: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void deleteObjectVersion(@NotNull Path objectPath, @NotNull String versionId) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            getMinioClient().removeObject(
+                RemoveObjectArgs.builder()
+                    .bucket(path.getBucketName())
+                    .object(path.getObjectKey())
+                    .versionId(versionId)
+                    .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to delete object version: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void restoreObjectVersion(@NotNull Path objectPath, @NotNull String versionId) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            getMinioClient().copyObject(
+                CopyObjectArgs.builder()
+                    .bucket(path.getBucketName())
+                    .object(path.getObjectKey())
+                    .metadataDirective(Directive.REPLACE)
+                    .source(CopySource.builder()
+                        .bucket(path.getBucketName())
+                        .object(path.getObjectKey())
+                        .versionId(versionId)
+                        .build())
+                    .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Failed to restore object version: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public InputStream openObject(@NotNull Path objectPath, @Nullable String versionId) throws IOException {
+        RustfsPath path = requireObjectPath(objectPath);
+        try {
+            var builder = GetObjectArgs.builder().bucket(path.getBucketName()).object(path.getObjectKey());
+            if (!CommonUtils.isEmpty(versionId)) {
+                builder.versionId(versionId);
+            }
+            return getMinioClient().getObject(builder.build());
+        } catch (Exception e) {
+            throw new IOException("Failed to open object: " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public FsStackblazeContext stackblazeContext() {
+        try {
+            DBPConnectionConfiguration cfg = connection.getDataSourceContainer().getActualConnectionConfiguration();
+            String pipeline = firstNonEmpty(
+                cfg.getProviderProperty("stackblazePipeline"),
+                cfg.getProperty("stackblazePipeline")
+            );
+            String phase = firstNonEmpty(
+                cfg.getProviderProperty("stackblazePhase"),
+                cfg.getProperty("stackblazePhase")
+            );
+            String instance = firstNonEmpty(
+                cfg.getProviderProperty("stackblazeInstance"),
+                cfg.getProperty("stackblazeInstance")
+            );
+            if (!CommonUtils.isEmpty(pipeline) && !CommonUtils.isEmpty(phase) && !CommonUtils.isEmpty(instance)) {
+                return new FsStackblazeContext(pipeline, phase, instance);
+            }
+        } catch (Exception ignored) {
+            // Fall back to the connection display name.
+        }
+        String name = connection.getName();
+        if (CommonUtils.isEmpty(name)) {
+            name = connection.getDataSourceContainer().getName();
+        }
+        if (CommonUtils.isEmpty(name)) {
+            return new FsStackblazeContext(null, null, null);
+        }
+        String cleaned = name.replace(" · SQL (DuckDB)", "");
+        String[] parts = cleaned.split("/");
+        if (parts.length < 3) {
+            return new FsStackblazeContext(null, null, null);
+        }
+        return new FsStackblazeContext(parts[0], parts[1], parts[2]);
+    }
+
+    @Nullable
+    private static String firstNonEmpty(@Nullable String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (!CommonUtils.isEmpty(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    @NotNull
+    private String requireBucketName(@NotNull Path path) throws IOException {
+        RustfsPath rustfs = (RustfsPath) path;
+        String bucket = rustfs.getBucketName();
+        if (CommonUtils.isEmpty(bucket)) {
+            throw new IOException("Not a bucket path");
+        }
+        return bucket;
+    }
+
+    @NotNull
+    private RustfsPath requireObjectPath(@NotNull Path dest) throws IOException {
+        RustfsPath path = (RustfsPath) dest;
+        if (path.isConnectionRoot() || path.isBucketPath()
+            || CommonUtils.isEmpty(path.getBucketName())
+            || CommonUtils.isEmpty(path.getObjectKey())
+        ) {
+            throw new IOException("Not an S3 object");
+        }
+        return path;
     }
 
     private void putObject(String bucket, String key, byte[] data) throws IOException {
@@ -292,6 +819,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
                 ListObjectsArgs.builder().bucket(bucket).prefix(key + "/").recursive(true).build()
             );
             for (Result<Item> result : nested) {
+                FsTransferMonitor.checkCancelled();
                 client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(result.get().objectName()).build());
             }
             client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(key).build());
@@ -311,9 +839,14 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         if (CommonUtils.isEmpty(src.getObjectKey()) || CommonUtils.isEmpty(dst.getObjectKey())) {
             throw new IOException("Only S3 objects and folders can be copied");
         }
+        FsTransferMonitor.checkCancelled();
         try {
             if (isFolderObject(src)) {
                 copyPrefix(src, dst);
+                return;
+            }
+            if (FsTransferMonitor.isResume() && objectExists(dst.getBucketName(), dst.getObjectKey())) {
+                FsTransferMonitor.status("Skipped existing " + dst.getObjectKey());
                 return;
             }
             copyObject(src.getBucketName(), src.getObjectKey(), dst.getBucketName(), dst.getObjectKey());
@@ -338,7 +871,7 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         if (CommonUtils.isEmpty(key)) {
             return false;
         }
-        if (!listObjectKeys(path.getBucketName(), key.endsWith("/") ? key : key + "/").isEmpty()) {
+        if (hasPrefixObjects(path.getBucketName(), key.endsWith("/") ? key : key + "/")) {
             return true;
         }
         try {
@@ -354,17 +887,50 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         String dstKey = dst.getObjectKey();
         String srcPrefix = srcKey.endsWith("/") ? srcKey : srcKey + "/";
         String dstPrefix = dstKey.endsWith("/") ? dstKey : dstKey + "/";
-        List<String> keys = listObjectKeys(src.getBucketName(), srcPrefix);
-        boolean copiedMarker = copyObjectIfExists(src.getBucketName(), srcPrefix, dst.getBucketName(), dstPrefix);
-        for (String key : keys) {
+        Set<String> existing = FsTransferMonitor.isResume()
+            ? listRelativeKeys(dst.getBucketName(), dstPrefix)
+            : Set.of();
+        boolean copiedMarker = existing.contains("")
+            || copyObjectIfExists(src.getBucketName(), srcPrefix, dst.getBucketName(), dstPrefix);
+        int copied = copiedMarker && !existing.contains("") ? 1 : 0;
+        int skipped = existing.contains("") ? 1 : 0;
+        int failed = 0;
+        Iterable<Result<Item>> results = getMinioClient().listObjects(
+            ListObjectsArgs.builder().bucket(src.getBucketName()).prefix(srcPrefix).recursive(true).build()
+        );
+        for (Result<Item> result : results) {
+            FsTransferMonitor.checkCancelled();
+            Item item = result.get();
+            if (item.isDir() || CommonUtils.isEmpty(item.objectName())) {
+                continue;
+            }
+            String key = item.objectName();
             if (key.equals(srcPrefix)) {
                 continue;
             }
             String relative = key.startsWith(srcPrefix) ? key.substring(srcPrefix.length()) : key;
-            copyObject(src.getBucketName(), key, dst.getBucketName(), dstPrefix + relative);
+            if (existing.contains(relative)) {
+                skipped++;
+                if (skipped % 100 == 0) {
+                    FsTransferMonitor.status("Skipped " + skipped + " existing objects");
+                }
+                continue;
+            }
+            try {
+                copyObject(src.getBucketName(), key, dst.getBucketName(), dstPrefix + relative);
+                copied++;
+            } catch (Exception e) {
+                failed++;
+            }
+            if (copied % 25 == 0) {
+                FsTransferMonitor.status("Copied " + copied + (skipped > 0 ? ", skipped " + skipped : "") + " objects");
+            }
         }
-        if (keys.isEmpty() && !copiedMarker) {
+        if (copied == 0 && !copiedMarker) {
             putObject(dst.getBucketName(), dstPrefix, new byte[0]);
+        }
+        if (failed > 0) {
+            throw new IOException("Copied " + copied + " objects, " + failed + " failed");
         }
     }
 
@@ -390,19 +956,42 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
         }
     }
 
+    private boolean objectExists(String bucket, String key) {
+        try {
+            getMinioClient().statObject(StatObjectArgs.builder().bucket(bucket).object(key).build());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @NotNull
-    private List<String> listObjectKeys(String bucket, String prefix) throws Exception {
-        List<String> keys = new ArrayList<>();
+    private Set<String> listRelativeKeys(String bucket, String prefix) throws Exception {
+        Set<String> keys = new HashSet<>();
         Iterable<Result<Item>> results = getMinioClient().listObjects(
             ListObjectsArgs.builder().bucket(bucket).prefix(prefix).recursive(true).build()
         );
         for (Result<Item> result : results) {
+            FsTransferMonitor.checkCancelled();
             Item item = result.get();
-            if (!item.isDir() && CommonUtils.isNotEmpty(item.objectName())) {
-                keys.add(item.objectName());
+            if (item.isDir() || CommonUtils.isEmpty(item.objectName())) {
+                continue;
+            }
+            String key = item.objectName();
+            if (key.equals(prefix)) {
+                keys.add("");
+            } else if (key.startsWith(prefix)) {
+                keys.add(key.substring(prefix.length()));
             }
         }
         return keys;
+    }
+
+    private boolean hasPrefixObjects(String bucket, String prefix) throws Exception {
+        Iterable<Result<Item>> results = getMinioClient().listObjects(
+            ListObjectsArgs.builder().bucket(bucket).prefix(prefix).recursive(true).maxKeys(1).build()
+        );
+        return results.iterator().hasNext();
     }
 
     @Override

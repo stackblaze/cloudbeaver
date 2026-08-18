@@ -33,6 +33,9 @@
                     <property id="pathStyle" label="Path-style access" type="boolean" defaultValue="true"/>
                     <property id="useSsl" label="Use SSL" type="boolean" defaultValue="false"/>
                     <property id="region" label="Region" type="string" defaultValue="us-east-1"/>
+                    <property id="stackblazePipeline" label="Stackblaze pipeline" type="string"/>
+                    <property id="stackblazePhase" label="Stackblaze phase" type="string"/>
+                    <property id="stackblazeInstance" label="Stackblaze instance" type="string"/>
                     <parameter name="supports-references" value="false"/>
                     <parameter name="supports-indexes" value="false"/>
                     <parameter name="supports-stored-code" value="false"/>

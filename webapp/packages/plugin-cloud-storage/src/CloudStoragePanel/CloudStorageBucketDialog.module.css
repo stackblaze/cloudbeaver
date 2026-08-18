@@ -1,0 +1,76 @@
+.tabs {
+  composes: box from global;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  composes: box from global;
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  color: var(--theme-text-hint);
+  cursor: pointer;
+}
+
+.tabActive {
+  color: var(--theme-primary);
+  font-weight: 600;
+}
+
+.textarea {
+  composes: box from global;
+  width: 100%;
+  min-height: 220px;
+  font-family: var(--theme-font-family-monospace, monospace);
+  font-size: 12px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.templates {
+  composes: box from global;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.row {
+  composes: box from global;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.hint,
+.error {
+  composes: box from global;
+  padding: 8px 0;
+  color: var(--theme-text-hint);
+  font-size: 12px;
+}
+
+.error {
+  color: var(--theme-negative);
+}
+
+.select {
+  composes: box from global;
+  min-width: 12rem;
+}
+
+.wired {
+  composes: box from global;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+}
