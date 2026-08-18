@@ -15,12 +15,12 @@
   cursor: pointer;
 
   &:hover {
-    background: #338ecc;
+    background: color-mix(in srgb, var(--theme-primary), white 12%);
   }
 
   &:after {
     position: absolute;
-    background: #236ea0 !important;
+    background: color-mix(in srgb, var(--theme-on-primary) 22%, transparent) !important;
     height: 32px;
     width: 1px;
     top: 8px;

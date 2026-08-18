@@ -42,7 +42,7 @@
     --data-grid-order-button-unordered: #c4c4c4;
     --data-grid-readonly-status-color: #e28835;
     --data-grid-cell-selection-background-color: rgba(150, 150, 150, 0.2);
-    --data-grid-cell-selection-background-color-focus: rgba(0, 145, 234, 0.2);
+    --data-grid-cell-selection-background-color-focus: color-mix(in srgb, var(--theme-primary) 20%, transparent);
     --data-grid-index-cell-border-color: var(--theme-primary);
     --data-grid-selected-row-color: var(--theme-secondary) !important;
     outline: 0;

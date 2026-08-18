@@ -13,7 +13,7 @@
 
   &:after {
     position: absolute;
-    background: #236ea0;
+    background: color-mix(in srgb, var(--theme-on-primary) 22%, transparent);
     height: 32px;
     width: 1px;
     top: 8px;
@@ -23,7 +23,7 @@
   }
 
   &:hover {
-    background: #338ecc;
+    background: color-mix(in srgb, var(--theme-primary), white 12%);
   }
 }
 

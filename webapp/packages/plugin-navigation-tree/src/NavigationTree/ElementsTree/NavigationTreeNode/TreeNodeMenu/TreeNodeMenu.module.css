@@ -19,7 +19,7 @@
   &.selected svg,
   &:hover svg,
   &:focus svg {
-    fill: #338fcc;
+    fill: var(--theme-primary);
   }
 }
 

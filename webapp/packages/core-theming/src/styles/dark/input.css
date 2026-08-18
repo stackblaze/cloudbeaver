@@ -8,16 +8,16 @@
 
 @layer base {
   .theme-dark {
-    --theme-input-color: var(--theme-on-secondary);
-    --theme-input-color-disabled: oklch(from var(--theme-input-color) calc(l - 0.03) 0 h);
-    --theme-input-color-placeholder: oklch(from var(--theme-input-color) calc(l - 0.15) 0 h);
-    --theme-input-color-readonly: oklch(from var(--theme-input-color) calc(l - 0.03) 0 h);
-    --theme-input-border: #585958;
-    --theme-input-border-disabled: oklch(from var(--theme-input-border) calc(l - 0.07) 0 h);
-    --theme-input-border-readonly: oklch(from var(--theme-input-border) calc(l - 0.03) 0 h);
-    --theme-input-background: var(--theme-surface);
-    --theme-input-background-disabled: #3e3e3e;
-    --theme-input-background-readonly: #3e3e3e;
-    --theme-switch-thumb: oklch(from var(--theme-surface) calc(l + 0.05) c h);
+    --theme-input-color: var(--theme-on-surface);
+    --theme-input-color-disabled: #6e6e6e;
+    --theme-input-color-placeholder: #9d9d9d;
+    --theme-input-color-readonly: #9d9d9d;
+    --theme-input-border: #2b2b2b;
+    --theme-input-border-disabled: #2b2b2b;
+    --theme-input-border-readonly: #2b2b2b;
+    --theme-input-background: #313131;
+    --theme-input-background-disabled: #2b2b2b;
+    --theme-input-background-readonly: #2b2b2b;
+    --theme-switch-thumb: #cccccc;
   }
 }

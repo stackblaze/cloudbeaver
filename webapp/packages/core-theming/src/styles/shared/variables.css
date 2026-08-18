@@ -9,10 +9,10 @@
 @layer base {
   :root {
     --app-height: 100vh;
-    --theme-form-element-radius: 3px;
-    --theme-group-element-radius: 4px;
-    --theme-menu-bar-small-action-radius: 3px;
-    --theme-font-family: Roboto, sans-serif;
-    --theme-font-family-mono: RobotoMono, sans-serif;
+    --theme-form-element-radius: 6px;
+    --theme-group-element-radius: 8px;
+    --theme-menu-bar-small-action-radius: 6px;
+    --theme-font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --theme-font-family-mono: RobotoMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 }

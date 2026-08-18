@@ -1,7 +1,7 @@
 @theme {
   /* Font families */
-  --font-roboto: Roboto, sans-serif;
-  --font-roboto-mono: RobotoMono, sans-serif;
+  --font-roboto: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-roboto-mono: RobotoMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Headline 6 – 1.25rem (20px) */
   --text-headline6: 1.25rem;

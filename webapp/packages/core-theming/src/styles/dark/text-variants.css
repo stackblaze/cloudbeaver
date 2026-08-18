@@ -8,19 +8,19 @@
 
 @layer base {
   .theme-dark {
-    --theme-text-primary-on-light: #ffffff;
-    --theme-text-primary-on-dark: rgba(0, 0, 0, 0.87);
-    --theme-text-secondary-on-light: rgba(255, 255, 255, 0.75);
-    --theme-text-secondary-on-dark: rgba(0, 0, 0, 0.45);
-    --theme-text-sub-secondary-on-light: rgba(255, 255, 255, 0.75);
+    --theme-text-primary-on-light: #cccccc;
+    --theme-text-primary-on-dark: #202124;
+    --theme-text-secondary-on-light: #9d9d9d;
+    --theme-text-secondary-on-dark: #3c4043;
+    --theme-text-sub-secondary-on-light: #9d9d9d;
     --theme-text-sub-secondary-on-dark: rgba(255, 255, 255, 0.7);
-    --theme-text-hint-on-light: rgba(255, 255, 255, 0.6);
-    --theme-text-hint-on-dark: rgba(0, 0, 0, 0.55);
-    --theme-text-disabled-on-light: rgba(255, 255, 255, 0.45);
+    --theme-text-hint-on-light: #9d9d9d;
+    --theme-text-hint-on-dark: #5f6368;
+    --theme-text-disabled-on-light: #6e6e6e;
     --theme-text-disabled-on-dark: rgba(0, 0, 0, 0.2);
-    --theme-text-icon-on-light: rgba(255, 255, 255, 0.5);
-    --theme-text-icon-on-dark: rgba(0, 0, 0, 0.38);
-    --theme-text-negative-on-light: hsl(0, 95%, 65%);
-    --theme-text-negative-on-dark: hsl(0, 95%, 65%);
+    --theme-text-icon-on-light: #9d9d9d;
+    --theme-text-icon-on-dark: #5f6368;
+    --theme-text-negative-on-light: #f85149;
+    --theme-text-negative-on-dark: #c72e0f;
   }
 }

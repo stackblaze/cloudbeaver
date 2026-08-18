@@ -8,7 +8,7 @@
 
 @layer base {
   hr {
-    border-color: var(--theme-secondary);
+    border-color: var(--theme-border, var(--theme-secondary));
     border-style: solid;
     border-bottom: none;
   }
@@ -19,5 +19,41 @@
 
   .branding-overflow-inverse {
     background-image: linear-gradient(to bottom, var(--theme-surface), color-mix(in srgb, var(--theme-surface) 0%, transparent));
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--theme-primary) 22%, transparent);
+    color: var(--theme-on-surface);
+  }
+
+  .theme-dark ::selection {
+    background-color: color-mix(in srgb, var(--theme-primary) 30%, transparent);
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--theme-on-secondary) 28%, transparent);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--theme-on-secondary) 45%, transparent);
+  }
+
+  .theme-dark ::-webkit-scrollbar-thumb {
+    background-color: #ffffff1a;
+  }
+
+  .theme-dark ::-webkit-scrollbar-thumb:hover {
+    background-color: #ffffff33;
   }
 }

@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   transition: opacity var(--duration-slow);
-  background: white;
+  background: #f8f9fb;
 }
 #app-loading-screen .app-loading-screen__logo-spinner {
   transform-origin: center;

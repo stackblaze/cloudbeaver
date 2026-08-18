@@ -2,37 +2,37 @@
 
 @layer theme {
   :root {
-    --theme-primary: #2a7cb4;
-    --theme-secondary: #f2f2f2;
-    --theme-background: #dedede;
+    --theme-primary: #1a73e8;
+    --theme-secondary: #f0f4f9;
+    --theme-background: #f8f9fb;
     --theme-surface: #ffffff;
-    --theme-error: #b00020;
+    --theme-error: #c72e0f;
     --theme-on-primary: #ffffff;
-    --theme-on-secondary: #6d6d6d;
-    --theme-on-surface: #353535;
+    --theme-on-secondary: #3c4043;
+    --theme-on-surface: #202124;
     --theme-on-error: #fff;
-    --theme-text-primary-on-background: rgba(0, 0, 0, 0.87);
-    --theme-text-secondary-on-background: rgba(0, 0, 0, 0.45);
-    --theme-text-hint-on-background: rgba(0, 0, 0, 0.55);
-    --theme-text-disabled-on-background: rgba(0, 0, 0, 0.2);
-    --theme-text-icon-on-background: rgba(0, 0, 0, 0.38);
-    --theme-text-primary-on-light: rgba(0, 0, 0, 0.87);
-    --theme-text-secondary-on-light: rgba(0, 0, 0, 0.45);
-    --theme-text-hint-on-light: rgba(0, 0, 0, 0.55);
-    --theme-text-disabled-on-light: rgba(0, 0, 0, 0.2);
-    --theme-text-icon-on-light: rgba(0, 0, 0, 0.38);
+    --theme-text-primary-on-background: #202124;
+    --theme-text-secondary-on-background: #3c4043;
+    --theme-text-hint-on-background: #5f6368;
+    --theme-text-disabled-on-background: #9aa0a6;
+    --theme-text-icon-on-background: #5f6368;
+    --theme-text-primary-on-light: #202124;
+    --theme-text-secondary-on-light: #3c4043;
+    --theme-text-hint-on-light: #5f6368;
+    --theme-text-disabled-on-light: #9aa0a6;
+    --theme-text-icon-on-light: #5f6368;
     --theme-text-primary-on-dark: white;
     --theme-text-secondary-on-dark: rgba(255, 255, 255, 0.7);
     --theme-text-hint-on-dark: rgba(255, 255, 255, 0.55);
     --theme-text-disabled-on-dark: rgba(255, 255, 255, 0.45);
     --theme-text-icon-on-dark: rgba(255, 255, 255, 0.45);
-    --theme-sub-secondary: #f8f8f8;
-    --theme-on-sub-secondary: #6d6d6d;
-    --theme-positive: #52c41a;
+    --theme-sub-secondary: #f0f4f9;
+    --theme-on-sub-secondary: #3c4043;
+    --theme-positive: #098658;
     --theme-on-positive: #fff;
-    --theme-negative: #e73e52;
-    --theme-status: #ff9900;
-    --theme-link-color: #2a7cb4;
+    --theme-negative: #c72e0f;
+    --theme-status: #b89500;
+    --theme-link-color: #1a73e8;
   }
 
   main {

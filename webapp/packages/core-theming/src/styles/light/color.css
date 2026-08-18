@@ -8,22 +8,25 @@
 
 @layer base {
   .theme-light {
-    /* Stackblaze / Kubero-aligned palette */
-    --theme-primary: #5d54a4;
+    /* Stackblaze dashboard light — gray-blue wash, charcoal text, Google-blue accents */
+    --theme-primary: #1a73e8;
     --theme-on-primary: #ffffff;
-    --theme-secondary: #f0f0f3;
-    --theme-on-secondary: #4d4d4d;
-    --theme-error: #e94948;
+    --theme-secondary: #f0f4f9;
+    --theme-on-secondary: #3c4043;
+    --theme-error: #c72e0f;
+    --theme-on-error: #ffffff;
     --theme-surface: #ffffff;
-    --theme-on-surface: #353535;
-    --theme-background: #f0f0f3;
-    --theme-sub-secondary: #f8f8f8;
-    --theme-on-sub-secondary: #4d4d4d;
-    --theme-positive: #52c41a;
+    --theme-on-surface: #202124;
+    --theme-background: #f8f9fb;
+    --theme-sub-secondary: #f0f4f9;
+    --theme-on-sub-secondary: #3c4043;
+    --theme-positive: #098658;
     --theme-on-positive: #ffffff;
-    --theme-negative: #e73e52;
-    --theme-status: #fab31a;
-    --theme-link-color: var(--theme-primary);
-    --theme-link-color-focus: #6b26d9;
+    --theme-negative: #c72e0f;
+    --theme-status: #b89500;
+    --theme-link-color: #1a73e8;
+    --theme-link-color-focus: #1967d2;
+    --theme-border: #dadce0;
+    --theme-ring: #1a73e8;
   }
 }
