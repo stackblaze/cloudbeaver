@@ -6,6 +6,7 @@
  * you may not use this file except in compliance with the License.
  */
 import {
+  ConnectionInfoActiveProjectKey,
   ConnectionInfoAuthPropertiesResource,
   ConnectionInfoCustomOptionsResource,
   ConnectionInfoPropertiesResource,
@@ -78,6 +79,18 @@ export class CloudStorageDuckDbService {
     const existing = this.duckdbConnections.get(s3Connection.id);
     if (existing && this.connectionInfoResource.has(existing)) {
       return existing;
+    }
+
+    // Communal deployments (Stackblaze) forbid user-created connections —
+    // kubero provisions a companion DuckDB connection alongside the S3 one
+    // and grants both. Prefer it when present.
+    const provisioned = this.connectionInfoResource
+      .get(ConnectionInfoActiveProjectKey)
+      .find((connection): connection is Connection => !!connection && connection.driverId === DUCKDB_DRIVER_ID);
+    if (provisioned) {
+      const provisionedKey = createConnectionParam(provisioned);
+      this.duckdbConnections.set(s3Connection.id, provisionedKey);
+      return provisionedKey;
     }
 
     const connectionKey = createConnectionParam(s3Connection);
