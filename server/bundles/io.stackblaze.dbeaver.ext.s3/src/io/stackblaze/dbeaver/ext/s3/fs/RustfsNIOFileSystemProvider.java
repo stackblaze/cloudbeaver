@@ -305,20 +305,20 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
     public void copy(Path source, Path target, CopyOption... options) throws IOException {
         RustfsPath src = (RustfsPath) source;
         RustfsPath dst = (RustfsPath) target;
+        if (src.isConnectionRoot() || dst.isConnectionRoot() || src.isBucketPath() || dst.isBucketPath()) {
+            throw new IOException("Only S3 objects and folders can be copied");
+        }
         if (CommonUtils.isEmpty(src.getObjectKey()) || CommonUtils.isEmpty(dst.getObjectKey())) {
-            throw new IOException("Only S3 objects can be copied");
+            throw new IOException("Only S3 objects and folders can be copied");
         }
         try {
-            getMinioClient().copyObject(
-                CopyObjectArgs.builder()
-                    .bucket(dst.getBucketName())
-                    .object(dst.getObjectKey())
-                    // RustFS rejects COPY-directive requests that carry metadata:
-                    // "Replacement metadata requires the REPLACE metadata directive"
-                    .metadataDirective(Directive.REPLACE)
-                    .source(CopySource.builder().bucket(src.getBucketName()).object(src.getObjectKey()).build())
-                    .build()
-            );
+            if (isFolderObject(src)) {
+                copyPrefix(src, dst);
+                return;
+            }
+            copyObject(src.getBucketName(), src.getObjectKey(), dst.getBucketName(), dst.getObjectKey());
+        } catch (IOException e) {
+            throw e;
         } catch (Exception e) {
             throw new IOException("Failed to copy S3 object: " + e.getMessage(), e);
         }
@@ -327,14 +327,82 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider {
     @Override
     public void move(Path source, Path target, CopyOption... options) throws IOException {
         copy(source, target, options);
-        RustfsPath src = (RustfsPath) source;
-        try {
-            getMinioClient().removeObject(
-                RemoveObjectArgs.builder().bucket(src.getBucketName()).object(src.getObjectKey()).build()
-            );
-        } catch (Exception e) {
-            throw new IOException("Failed to remove S3 object after move: " + e.getMessage(), e);
+        delete(source);
+    }
+
+    private boolean isFolderObject(@NotNull RustfsPath path) throws Exception {
+        if (path.isConnectionRoot() || path.isBucketPath()) {
+            return true;
         }
+        String key = path.getObjectKey();
+        if (CommonUtils.isEmpty(key)) {
+            return false;
+        }
+        if (!listObjectKeys(path.getBucketName(), key.endsWith("/") ? key : key + "/").isEmpty()) {
+            return true;
+        }
+        try {
+            BasicFileAttributes attrs = readAttributes(path, BasicFileAttributes.class);
+            return attrs != null && attrs.isDirectory();
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+    }
+
+    private void copyPrefix(@NotNull RustfsPath src, @NotNull RustfsPath dst) throws Exception {
+        String srcKey = src.getObjectKey();
+        String dstKey = dst.getObjectKey();
+        String srcPrefix = srcKey.endsWith("/") ? srcKey : srcKey + "/";
+        String dstPrefix = dstKey.endsWith("/") ? dstKey : dstKey + "/";
+        List<String> keys = listObjectKeys(src.getBucketName(), srcPrefix);
+        boolean copiedMarker = copyObjectIfExists(src.getBucketName(), srcPrefix, dst.getBucketName(), dstPrefix);
+        for (String key : keys) {
+            if (key.equals(srcPrefix)) {
+                continue;
+            }
+            String relative = key.startsWith(srcPrefix) ? key.substring(srcPrefix.length()) : key;
+            copyObject(src.getBucketName(), key, dst.getBucketName(), dstPrefix + relative);
+        }
+        if (keys.isEmpty() && !copiedMarker) {
+            putObject(dst.getBucketName(), dstPrefix, new byte[0]);
+        }
+    }
+
+    private void copyObject(String srcBucket, String srcKey, String dstBucket, String dstKey) throws Exception {
+        getMinioClient().copyObject(
+            CopyObjectArgs.builder()
+                .bucket(dstBucket)
+                .object(dstKey)
+                // RustFS rejects COPY-directive requests that carry metadata:
+                // "Replacement metadata requires the REPLACE metadata directive"
+                .metadataDirective(Directive.REPLACE)
+                .source(CopySource.builder().bucket(srcBucket).object(srcKey).build())
+                .build()
+        );
+    }
+
+    private boolean copyObjectIfExists(String srcBucket, String srcKey, String dstBucket, String dstKey) {
+        try {
+            copyObject(srcBucket, srcKey, dstBucket, dstKey);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @NotNull
+    private List<String> listObjectKeys(String bucket, String prefix) throws Exception {
+        List<String> keys = new ArrayList<>();
+        Iterable<Result<Item>> results = getMinioClient().listObjects(
+            ListObjectsArgs.builder().bucket(bucket).prefix(prefix).recursive(true).build()
+        );
+        for (Result<Item> result : results) {
+            Item item = result.get();
+            if (!item.isDir() && CommonUtils.isNotEmpty(item.objectName())) {
+                keys.add(item.objectName());
+            }
+        }
+        return keys;
     }
 
     @Override

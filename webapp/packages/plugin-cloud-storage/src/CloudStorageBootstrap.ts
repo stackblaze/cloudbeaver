@@ -15,13 +15,17 @@ import { ACTION_DELETE, ACTION_DOWNLOAD, ACTION_NEW_FOLDER, ACTION_OPEN, ACTION_
 import { MENU_NAV_TREE } from '@cloudbeaver/plugin-navigation-tree';
 import { MENU_TOOLS, ToolsPanelService } from '@cloudbeaver/plugin-tools-panel';
 
+import { ACTION_CLOUD_STORAGE_COPY } from './Actions/ACTION_CLOUD_STORAGE_COPY.js';
 import { ACTION_CLOUD_STORAGE_COPY_URI } from './Actions/ACTION_CLOUD_STORAGE_COPY_URI.js';
 import { ACTION_CLOUD_STORAGE_CREATE_BUCKET } from './Actions/ACTION_CLOUD_STORAGE_CREATE_BUCKET.js';
 import { ACTION_CLOUD_STORAGE_ENABLE } from './Actions/ACTION_CLOUD_STORAGE_ENABLE.js';
+import { ACTION_CLOUD_STORAGE_MOVE } from './Actions/ACTION_CLOUD_STORAGE_MOVE.js';
+import { ACTION_CLOUD_STORAGE_PASTE } from './Actions/ACTION_CLOUD_STORAGE_PASTE.js';
 import { ACTION_CLOUD_STORAGE_UPLOAD } from './Actions/ACTION_CLOUD_STORAGE_UPLOAD.js';
 import { CloudStorageDuckDbService } from './CloudStorageDuckDbService.js';
 import { CloudStorageFileService } from './CloudStorageFileService.js';
 import { CloudStorageService } from './CloudStorageService.js';
+import { getParentNodeUri } from './pathUtils.js';
 
 const CloudStoragePanel = importLazyComponent(() => import('./CloudStoragePanel/CloudStoragePanel.js').then(m => m.CloudStoragePanel));
 
@@ -75,6 +79,11 @@ export class CloudStorageBootstrap extends Bootstrap {
     return !!fsPath && /^s3:\/\/[^/]+\/?$/.test(fsPath);
   }
 
+  /** File or folder inside a bucket — the rustfs layer can copy/move these. */
+  private isObject(fsPath: string | null): boolean {
+    return !!fsPath && /^s3:\/\/[^/]+\/[^/]+\/./.test(fsPath);
+  }
+
   override register(): void {
     this.menuService.addCreator({
       menus: [MENU_TOOLS],
@@ -108,7 +117,16 @@ export class CloudStorageBootstrap extends Bootstrap {
         const node = context.get(DATA_CONTEXT_NAV_NODE);
         return !!node && this.isFile(node, this.fsPath(node));
       },
-      getItems: (context, items) => [...items, ACTION_OPEN, ACTION_DOWNLOAD, ACTION_CLOUD_STORAGE_COPY_URI, ACTION_RENAME, ACTION_DELETE],
+      getItems: (context, items) => [
+        ...items,
+        ACTION_OPEN,
+        ACTION_DOWNLOAD,
+        ACTION_CLOUD_STORAGE_COPY,
+        ACTION_CLOUD_STORAGE_MOVE,
+        ACTION_CLOUD_STORAGE_COPY_URI,
+        ACTION_RENAME,
+        ACTION_DELETE,
+      ],
     });
 
     // Buckets and folders: upload + delete. Applies to any container below the
@@ -121,7 +139,15 @@ export class CloudStorageBootstrap extends Bootstrap {
         const fsPath = this.fsPath(node);
         return !!node && this.isEntry(fsPath) && !this.isFile(node!, fsPath);
       },
-      getItems: (context, items) => [...items, ACTION_CLOUD_STORAGE_UPLOAD, ACTION_NEW_FOLDER, ACTION_DELETE],
+      getItems: (context, items) => [
+        ...items,
+        ACTION_CLOUD_STORAGE_UPLOAD,
+        ACTION_NEW_FOLDER,
+        ACTION_CLOUD_STORAGE_COPY,
+        ACTION_CLOUD_STORAGE_MOVE,
+        ACTION_CLOUD_STORAGE_PASTE,
+        ACTION_DELETE,
+      ],
     });
 
     // Storage root: create buckets.
@@ -140,6 +166,9 @@ export class CloudStorageBootstrap extends Bootstrap {
       actions: [
         ACTION_OPEN,
         ACTION_DOWNLOAD,
+        ACTION_CLOUD_STORAGE_COPY,
+        ACTION_CLOUD_STORAGE_MOVE,
+        ACTION_CLOUD_STORAGE_PASTE,
         ACTION_CLOUD_STORAGE_COPY_URI,
         ACTION_RENAME,
         ACTION_DELETE,
@@ -171,6 +200,11 @@ export class CloudStorageBootstrap extends Bootstrap {
           case ACTION_CLOUD_STORAGE_COPY_URI:
           case ACTION_RENAME:
             return file;
+          case ACTION_CLOUD_STORAGE_COPY:
+          case ACTION_CLOUD_STORAGE_MOVE:
+            return this.isObject(fsPath);
+          case ACTION_CLOUD_STORAGE_PASTE:
+            return !file && this.cloudStorageService.canPasteTo(node.uri);
           case ACTION_CLOUD_STORAGE_UPLOAD:
           case ACTION_NEW_FOLDER:
             return !file;
@@ -211,6 +245,33 @@ export class CloudStorageBootstrap extends Bootstrap {
               anchor.click();
               break;
             }
+            case ACTION_CLOUD_STORAGE_COPY:
+            case ACTION_CLOUD_STORAGE_MOVE: {
+              this.cloudStorageService.setClipboard({
+                mode: action === ACTION_CLOUD_STORAGE_MOVE ? 'move' : 'copy',
+                items: [{ nodeUri: node.uri, parentUri: getParentNodeUri(node.uri), name }],
+              });
+              this.notificationService.logInfo({
+                title:
+                  action === ACTION_CLOUD_STORAGE_MOVE
+                    ? 'plugin_cloud_storage_move_ready'
+                    : 'plugin_cloud_storage_copy_ready',
+              });
+              break;
+            }
+            case ACTION_CLOUD_STORAGE_PASTE: {
+              const clip = this.cloudStorageService.clipboard;
+              if (!clip || !this.cloudStorageService.canPasteTo(node.uri)) {
+                return;
+              }
+              const sourceParents = [...new Set(clip.items.map(item => item.parentUri).filter(Boolean))];
+              await this.cloudStorageService.pasteTo(node.uri);
+              for (const parentUri of sourceParents) {
+                await this.navNodeManagerService.refreshTree(parentUri!);
+              }
+              await this.navNodeManagerService.refreshTree(node.uri);
+              break;
+            }
             case ACTION_CLOUD_STORAGE_COPY_URI: {
               await navigator.clipboard.writeText(this.cloudStorageService.getS3Uri(node.uri));
               break;
@@ -237,7 +298,8 @@ export class CloudStorageBootstrap extends Bootstrap {
               break;
             }
             case ACTION_CLOUD_STORAGE_UPLOAD: {
-              await this.uploadTo(node, node.uri);
+              await this.uploadTo(node.uri);
+              await this.navNodeManagerService.refreshTree(node.uri);
               break;
             }
             case ACTION_CLOUD_STORAGE_CREATE_BUCKET:
@@ -276,28 +338,14 @@ export class CloudStorageBootstrap extends Bootstrap {
     });
   }
 
-  private uploadTo(node: NavNode, parentNodePath: string): Promise<void> {
+  private uploadTo(parentNodePath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.multiple = true;
       input.onchange = async () => {
         try {
-          const files = Array.from(input.files ?? []);
-          if (!files.length) {
-            resolve();
-            return;
-          }
-          const body = new FormData();
-          body.append('variables', JSON.stringify({ toParentNodePath: parentNodePath }));
-          for (const file of files) {
-            body.append('files', file, file.name);
-          }
-          const response = await fetch(GlobalConstants.absoluteServiceUrl('fs-data'), { method: 'POST', body });
-          if (!response.ok) {
-            throw new Error(`Upload failed: HTTP ${response.status}`);
-          }
-          await this.navNodeManagerService.refreshTree(node.uri);
+          await this.cloudStorageService.uploadFiles(parentNodePath, Array.from(input.files ?? []));
           resolve();
         } catch (exception) {
           reject(exception);
@@ -306,14 +354,4 @@ export class CloudStorageBootstrap extends Bootstrap {
       input.click();
     });
   }
-}
-
-/** Parent node URI, so the tree can be refreshed where the deleted entry was. */
-function getParentNodeUri(uri: string): string | null {
-  const index = uri.lastIndexOf('/');
-  if (index <= 0) {
-    return null;
-  }
-  const parent = uri.slice(0, index);
-  return parent.endsWith('//') ? null : parent;
 }

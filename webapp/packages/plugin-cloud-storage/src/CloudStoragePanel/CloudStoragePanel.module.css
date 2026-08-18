@@ -2,64 +2,51 @@
   composes: box from global;
   height: 100%;
   width: 100%;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.tree {
-  composes: box from global;
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  overflow: auto;
-}
-
-.pane {
-  composes: box from global;
-  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.treePane {
-  composes: pane;
-  border-right: 1px solid var(--theme-border);
-  min-width: 200px;
-}
-
-.contentPane {
-  composes: pane;
-  flex: 1;
-}
-
-.panelHeader {
-  composes: box from global;
-  padding: 8px 12px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--theme-border);
-  flex-shrink: 0;
+.filter {
+  margin-left: auto;
+  min-width: 160px;
+  max-width: 240px;
 }
 
 .breadcrumb {
   composes: box from global;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--theme-border);
   flex-shrink: 0;
 }
 
+.breadcrumbItemWrap {
+  composes: box from global;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .breadcrumbItem {
   composes: box from global;
+  border: none;
+  background: transparent;
+  padding: 0;
   cursor: pointer;
   color: var(--theme-primary);
 }
 
-.breadcrumbItem:hover {
+.breadcrumbItem:hover:not(:disabled) {
   text-decoration: underline;
+}
+
+.breadcrumbItem:disabled {
+  color: var(--theme-text);
+  cursor: default;
 }
 
 .breadcrumbSeparator {
@@ -71,69 +58,27 @@
   composes: box from global;
   flex: 1;
   overflow: auto;
+  position: relative;
 }
 
-.fileRow {
-  composes: box from global;
-  display: grid;
-  grid-template-columns: 1fr 100px 80px;
-  gap: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--theme-border-secondary);
-}
-
-.fileRow:hover {
-  background: var(--theme-selection);
-}
-
-.fileRowSelected {
-  composes: fileRow;
-  background: var(--theme-selection);
+.loader {
+  padding: 16px;
 }
 
 .fileName {
   composes: box from global;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fileHeader {
-  composes: fileRow;
-  font-weight: 600;
-  cursor: default;
-  background: var(--theme-background-secondary);
-}
-
-.fileHeader:hover {
-  background: var(--theme-background-secondary);
-}
-
-.treeList {
-  composes: box from global;
-  flex: 1;
-  overflow: auto;
-  padding: 4px 0;
-}
-
-.treeItem {
-  composes: box from global;
-  padding: 6px 12px;
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.treeItem:hover {
-  background: var(--theme-selection);
-}
-
-.treeItemActive {
-  composes: treeItem;
-  background: var(--theme-selection);
-  font-weight: 600;
+.fileIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .statusMessage {

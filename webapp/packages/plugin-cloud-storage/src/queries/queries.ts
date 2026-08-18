@@ -43,6 +43,33 @@ export const FS_DELETE_MUTATION = `
   }
 `;
 
+export const FS_COPY_MUTATION = `
+  mutation fsCopy($nodePath: String!, $toParentNodePath: String!) {
+    file: fsCopy(nodePath: $nodePath, toParentNodePath: $toParentNodePath) {
+      name
+      nodePath
+    }
+  }
+`;
+
+export const FS_MOVE_MUTATION = `
+  mutation fsMove($nodePath: String!, $toParentNodePath: String!) {
+    file: fsMove(nodePath: $nodePath, toParentNodePath: $toParentNodePath) {
+      name
+      nodePath
+    }
+  }
+`;
+
+export const FS_RENAME_MUTATION = `
+  mutation fsRename($nodePath: String!, $newName: String!) {
+    file: fsRename(nodePath: $nodePath, newName: $newName) {
+      name
+      nodePath
+    }
+  }
+`;
+
 export const FS_READ_FILE_CONTENT_QUERY = `
   query fsReadFileContentAsString($nodePath: String!) {
     content: fsReadFileContentAsString(nodePath: $nodePath)
