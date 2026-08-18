@@ -352,7 +352,7 @@ public class WebServiceFS implements DBWServiceFS {
                     int failed = 0;
                     monitor.beginTask(taskName, nodePaths.size());
                     for (String nodePath : nodePaths) {
-                        if (monitor.isCancelled()) {
+                        if (monitor.isCanceled()) {
                             throw new InterruptedException("Transfer cancelled");
                         }
                         try {

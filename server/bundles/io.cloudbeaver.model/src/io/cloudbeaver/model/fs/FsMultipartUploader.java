@@ -12,7 +12,7 @@ import org.jkiss.code.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.FileSystemProvider;
+import java.nio.file.spi.FileSystemProvider;
 import java.nio.file.Path;
 import java.util.List;
 

@@ -36,6 +36,7 @@ import {
   KUBERO_WEBHOOK_ARN,
   listFunctions,
   listTriggers,
+  type StackblazeEventsStatus,
   type StackblazeFunction,
 } from '../stackblazeApi.js';
 import style from './CloudStorageBucketDialog.module.css';
@@ -189,7 +190,7 @@ export const CloudStorageBucketDialog: DialogComponent<CloudStorageBucketPayload
               listFunctions(stackblaze.pipeline, stackblaze.phase),
               stackblaze.instance
                 ? getRustfsEventsStatus(stackblaze.pipeline, stackblaze.phase, stackblaze.instance)
-                : Promise.resolve({ enabled: false }),
+                : Promise.resolve<StackblazeEventsStatus>({ enabled: false }),
             ]);
             if (cancelled) {
               return;

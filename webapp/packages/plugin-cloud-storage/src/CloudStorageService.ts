@@ -196,7 +196,8 @@ export class CloudStorageService {
     }
     if (this.isStorageRoot) {
       const selected = this.selectedFiles;
-      return selected.length === 1 && this.isBucketPath(selected[0].nodePath) ? selected[0].nodePath : null;
+      const only = selected[0];
+      return selected.length === 1 && only && this.isBucketPath(only.nodePath) ? only.nodePath : null;
     }
     return this.currentPath;
   }
@@ -705,7 +706,7 @@ export class CloudStorageService {
       this.resumeKind = null;
       controller.resolve(
         mode === 'move' ? 'plugin_cloud_storage_move_done' : 'plugin_cloud_storage_copy_done',
-        typeof info.taskResult === 'string' ? info.taskResult : null,
+        typeof info.taskResult === 'string' ? info.taskResult : undefined,
       );
       if (this.currentPath) {
         await this.loadFiles(this.currentPath);

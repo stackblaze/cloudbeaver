@@ -51,7 +51,7 @@ public final class FsTransferMonitor {
 
     public static void checkCancelled() throws InterruptedIOException {
         DBRProgressMonitor monitor = CURRENT.get();
-        if ((monitor != null && monitor.isCancelled()) || Thread.currentThread().isInterrupted()) {
+        if ((monitor != null && monitor.isCanceled()) || Thread.currentThread().isInterrupted()) {
             throw new InterruptedIOException("Transfer cancelled");
         }
     }
