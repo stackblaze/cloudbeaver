@@ -495,14 +495,16 @@ public class RustfsNIOFileSystemProvider extends NIOFileSystemProvider implement
             }
             StatObjectResponse stat = getMinioClient().statObject(builder.build());
             String encryption = null;
+            String storageClass = null;
             if (stat.headers() != null) {
                 encryption = stat.headers().get("X-Amz-Server-Side-Encryption");
+                storageClass = stat.headers().get("X-Amz-Storage-Class");
             }
             return new FsObjectInfo(
                 stat.size(),
                 stat.etag(),
                 stat.lastModified() == null ? null : stat.lastModified().toString(),
-                CommonUtils.isEmpty(stat.storageClass()) ? "STANDARD" : stat.storageClass(),
+                CommonUtils.isEmpty(storageClass) ? "STANDARD" : storageClass,
                 stat.versionId(),
                 encryption
             );
