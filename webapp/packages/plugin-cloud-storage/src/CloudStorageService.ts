@@ -24,6 +24,7 @@ import {
   FS_LIST_FILE_SYSTEMS_QUERY,
   FS_LIST_FILES_QUERY,
   FS_CREATE_FOLDER_MUTATION,
+  FS_DELETE_MUTATION,
   FS_READ_FILE_CONTENT_QUERY,
   type FsListFileSystemsResult,
   type FsListFilesResult,
@@ -218,6 +219,16 @@ export class CloudStorageService {
   /** Creates a bucket (root parent) or folder marker (bucket/folder parent). */
   async createFolder(parentPath: string, folderName: string): Promise<void> {
     await this.graphQLService.client.request(FS_CREATE_FOLDER_MUTATION, { parentPath, folderName });
+  }
+
+  /**
+   * Delete through the file system API, not the navigator's navDeleteNodes:
+   * that one calls checkProjectEditAccess, and file system nodes hang off the
+   * navigator root rather than a project, so getOwnerProject() throws
+   * "Node doesn't have owner project" before anything is deleted.
+   */
+  async deleteNode(nodePath: string): Promise<void> {
+    await this.graphQLService.client.request(FS_DELETE_MUTATION, { nodePath });
   }
 
   getConnectionKey(connection: Connection) {

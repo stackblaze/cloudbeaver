@@ -37,6 +37,12 @@ export const FS_CREATE_FOLDER_MUTATION = `
   }
 `;
 
+export const FS_DELETE_MUTATION = `
+  mutation fsDelete($nodePath: String!) {
+    fsDelete(nodePath: $nodePath)
+  }
+`;
+
 export const FS_READ_FILE_CONTENT_QUERY = `
   query fsReadFileContentAsString($nodePath: String!) {
     content: fsReadFileContentAsString(nodePath: $nodePath)

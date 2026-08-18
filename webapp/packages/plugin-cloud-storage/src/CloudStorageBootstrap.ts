@@ -229,7 +229,11 @@ export class CloudStorageBootstrap extends Bootstrap {
               break;
             }
             case ACTION_DELETE: {
-              await this.navTreeResource.deleteNode(node.uri);
+              const parentUri = getParentNodeUri(node.uri);
+              await this.cloudStorageService.deleteNode(node.uri);
+              if (parentUri) {
+                await this.navNodeManagerService.refreshTree(parentUri);
+              }
               break;
             }
             case ACTION_CLOUD_STORAGE_UPLOAD: {
@@ -302,4 +306,14 @@ export class CloudStorageBootstrap extends Bootstrap {
       input.click();
     });
   }
+}
+
+/** Parent node URI, so the tree can be refreshed where the deleted entry was. */
+function getParentNodeUri(uri: string): string | null {
+  const index = uri.lastIndexOf('/');
+  if (index <= 0) {
+    return null;
+  }
+  const parent = uri.slice(0, index);
+  return parent.endsWith('//') ? null : parent;
 }
