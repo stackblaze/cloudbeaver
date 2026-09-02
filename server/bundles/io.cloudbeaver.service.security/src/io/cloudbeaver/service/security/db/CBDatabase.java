@@ -209,7 +209,7 @@ public class CBDatabase extends InternalDB<WebDatabaseConfig> {
         if (CommonUtils.isEmpty(databaseConfig.getPassword())) {
             databaseConfig.setPassword(SecurityUtils.generatePassword(8));
             try {
-                IOUtils.writeFileFromString(pwdFile, databaseConfig.getPassword());
+                java.nio.file.Files.writeString(pwdFile.toPath(), databaseConfig.getPassword());
             } catch (IOException e) {
                 log.error(e);
             }
