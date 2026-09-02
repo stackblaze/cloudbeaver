@@ -63,11 +63,21 @@ public class MongoDataSource extends AbstractDataSource
         String user = CommonUtils.notEmpty(cfg.getUserName());
         String password = CommonUtils.notEmpty(cfg.getUserPassword());
         String database = CommonUtils.notEmpty(cfg.getDatabaseName());
-        String authSource = CommonUtils.toString(
+        String authSourceProp = CommonUtils.toString(
             cfg.getProviderProperty(MongoConstants.PROP_AUTH_SOURCE), "").trim();
-        if (authSource.isEmpty()) {
-            authSource = MongoConstants.DEFAULT_AUTH_SOURCE;
+        String mechanism = CommonUtils.toString(
+            cfg.getProviderProperty(MongoConstants.PROP_AUTH_MECHANISM), "").trim().toLowerCase();
+        if (mechanism.isEmpty()) {
+            mechanism = MongoConstants.MECH_SCRAM_SHA_256;
         }
+        // PLAIN (FerretDB v1 chart) defaults its source to $external per the
+        // MongoDB URI spec; SCRAM defaults to admin.
+        String authSource = !authSourceProp.isEmpty()
+            ? authSourceProp
+            : (MongoConstants.MECH_PLAIN.equals(mechanism)
+                ? "$external" : MongoConstants.DEFAULT_AUTH_SOURCE);
+        boolean tls = CommonUtils.toBoolean(cfg.getProviderProperty(MongoConstants.PROP_TLS));
+        boolean tlsInsecure = CommonUtils.toBoolean(cfg.getProviderProperty(MongoConstants.PROP_TLS_INSECURE));
 
         monitor.subTask("Connect to MongoDB " + host + ":" + port);
         try {
@@ -79,11 +89,31 @@ public class MongoDataSource extends AbstractDataSource
                 .applyToSocketSettings(ss -> ss
                     .connectTimeout(15_000, TimeUnit.MILLISECONDS)
                     .readTimeout(60_000, TimeUnit.MILLISECONDS));
+            if (tls) {
+                final boolean insecure = tlsInsecure;
+                builder.applyToSslSettings(ssl -> {
+                    ssl.enabled(true);
+                    if (insecure) {
+                        // The DocumentDB gateway (and tunneled endpoints, where
+                        // the hostname is 127.0.0.1) present self-signed certs.
+                        ssl.invalidHostNameAllowed(true);
+                        ssl.context(insecureSslContext());
+                    }
+                });
+            }
             if (!user.isEmpty()) {
-                // SCRAM-SHA-256 is the one mechanism FerretDB v2 supports, and
-                // every supported MongoDB (4.0+) speaks it as well.
-                builder.credential(MongoCredential.createScramSha256Credential(
-                    user, authSource, password.toCharArray()));
+                // SCRAM-SHA-256 is the default: the one mechanism FerretDB v2
+                // supports, and every supported MongoDB (4.0+) speaks it too.
+                // PLAIN covers the FerretDB v1 chart; SCRAM-SHA-1 legacy mongod.
+                MongoCredential credential = switch (mechanism) {
+                    case MongoConstants.MECH_PLAIN ->
+                        MongoCredential.createPlainCredential(user, authSource, password.toCharArray());
+                    case MongoConstants.MECH_SCRAM_SHA_1 ->
+                        MongoCredential.createScramSha1Credential(user, authSource, password.toCharArray());
+                    default ->
+                        MongoCredential.createScramSha256Credential(user, authSource, password.toCharArray());
+                };
+                builder.credential(credential);
             }
             client = MongoClients.create(builder.build());
 
@@ -110,6 +140,33 @@ public class MongoDataSource extends AbstractDataSource
         } catch (Exception e) {
             closeClient();
             throw new DBException("Failed to connect to MongoDB at " + host + ":" + port, e);
+        }
+    }
+
+    @NotNull
+    private static javax.net.ssl.SSLContext insecureSslContext() {
+        try {
+            javax.net.ssl.TrustManager[] trustAll = new javax.net.ssl.TrustManager[]{
+                new javax.net.ssl.X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                    }
+
+                    @Override
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                    }
+
+                    @Override
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return new java.security.cert.X509Certificate[0];
+                    }
+                }
+            };
+            javax.net.ssl.SSLContext context = javax.net.ssl.SSLContext.getInstance("TLS");
+            context.init(null, trustAll, new java.security.SecureRandom());
+            return context;
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot build insecure SSL context", e);
         }
     }
 

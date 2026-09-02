@@ -36,6 +36,9 @@
                     <file type="jar" path="maven:/org.mongodb:mongodb-driver-sync:RELEASE[5.6.1]" bundle="!drivers.mongodb"/>
                     <file type="jar" path="drivers/mongodb" bundle="drivers.mongodb"/>
                     <property id="authSource" label="Auth database" type="string" defaultValue="admin"/>
+                    <property id="authMechanism" label="Auth mechanism (scram-sha-256 | scram-sha-1 | plain)" type="string" defaultValue="scram-sha-256"/>
+                    <property id="tls" label="Use TLS" type="boolean" defaultValue="false"/>
+                    <property id="tlsInsecure" label="Trust any TLS certificate" type="boolean" defaultValue="false"/>
                     <parameter name="supports-references" value="false"/>
                     <parameter name="supports-indexes" value="false"/>
                     <parameter name="supports-stored-code" value="false"/>
