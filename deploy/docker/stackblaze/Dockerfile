@@ -9,8 +9,13 @@
 ARG JAVA_IMAGE=eclipse-temurin:21-jdk-noble
 ARG NODE_IMAGE=node:24.13.1-bookworm
 ARG MAVEN_VERSION=3.9.16
-ARG DBEAVER_REF=devel
-ARG DBEAVER_COMMON_REF=devel
+# Pinned to the last upstream SHAs this fork compiles against (2026-08-18).
+# Upstream `devel` drifted past our code (BaseServletPlatform File->Path) and
+# an unpinned build breaks with NO change in this repo. Fetch-by-SHA below
+# also accepts branch names, so overriding stays possible. Bump these together
+# with an upstream catch-up merge.
+ARG DBEAVER_REF=71879f4671616d0aa685a885a923944e331c5c85
+ARG DBEAVER_COMMON_REF=2df03e58480c6325732f476e8355e375cec5405e
 # Must be global (before first FROM) so later FROM lines can resolve it.
 ARG BASE_JAVA_TAG=stable
 
@@ -37,10 +42,16 @@ RUN apt-get -o Acquire::Retries=5 update \
 
 WORKDIR /src
 
-RUN git clone --depth 1 --branch "${DBEAVER_COMMON_REF}" \
-      https://github.com/dbeaver/dbeaver-common.git dbeaver-common \
- && git clone --depth 1 --branch "${DBEAVER_REF}" \
-      https://github.com/dbeaver/dbeaver.git dbeaver
+# `git clone --branch` refuses SHAs; init+fetch-by-SHA handles SHAs AND
+# branch names (GitHub serves reachable SHAs to shallow fetches).
+RUN git init -q dbeaver-common \
+ && git -C dbeaver-common remote add origin https://github.com/dbeaver/dbeaver-common.git \
+ && git -C dbeaver-common fetch -q --depth 1 origin "${DBEAVER_COMMON_REF}" \
+ && git -C dbeaver-common checkout -q FETCH_HEAD \
+ && git init -q dbeaver \
+ && git -C dbeaver remote add origin https://github.com/dbeaver/dbeaver.git \
+ && git -C dbeaver fetch -q --depth 1 origin "${DBEAVER_REF}" \
+ && git -C dbeaver checkout -q FETCH_HEAD
 
 COPY . /src/cloudbeaver
 

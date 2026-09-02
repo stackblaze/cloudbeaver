@@ -1,0 +1,45 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>drivers.mongodb</artifactId>
+    <version>1.0.0</version>
+    <parent>
+        <groupId>io.cloudbeaver</groupId>
+        <artifactId>drivers</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../</relativePath>
+    </parent>
+    <packaging>pom</packaging>
+
+    <properties>
+        <deps.output.dir>mongodb</deps.output.dir>
+        <mongodb.driver.version>5.8.0</mongodb.driver.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+        <!-- Pin core + bson explicitly: a parent dependencyManagement manages
+             mongodb-driver-core/bson to 5.8.0, so without these the transitives
+             land at 5.8.0 while sync stays 5.6.1 -> NoSuchMethodError on
+             OperationContext.<init> at connect. All four must be one version. -->
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-core</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>bson</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>bson-record-codec</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+    </dependencies>
+</project>

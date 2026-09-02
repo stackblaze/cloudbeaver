@@ -23,6 +23,7 @@
         <resource name="drivers/databend"/>
         <resource name="drivers/redis"/>
         <resource name="drivers/minio"/>
+        <resource name="drivers/mongodb"/>
     </extension>
 
     <!-- Bundles  -->
@@ -48,6 +49,7 @@
         <bundle id="drivers.databend" label="Databend drivers"/>
         <bundle id="drivers.redis" label="Redis / Valkey drivers"/>
         <bundle id="drivers.minio" label="MinIO S3 drivers"/>
+        <bundle id="drivers.mongodb" label="MongoDB drivers"/>
     </extension>
 
     <!-- Enabled drivers -->
@@ -73,6 +75,7 @@
         <driver id="databend:databend_jdbc"/>
         <driver id="redis:redis"/>
         <driver id="s3:rustfs"/>
+        <driver id="mongodb:mongodb"/>
     </extension>
 
 
