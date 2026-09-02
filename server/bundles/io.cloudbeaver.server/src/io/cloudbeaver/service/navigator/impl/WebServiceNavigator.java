@@ -131,10 +131,13 @@ public class WebServiceNavigator implements DBWServiceNavigator {
                 }
                 // Stackblaze: hide server-admin / System Info folders from tenant
                 // (non-RM-admin) sessions — they error on a scoped DB role.
-                if (node instanceof DBNDatabaseFolder adminFolder
-                    && !SMUtils.isRMAdmin(session)
-                    && SUPPRESSED_ADMIN_NODE_IDS.contains(adminFolder.getMeta().getId())) {
-                    continue;
+                // NB: getMeta().getId() can be null and SUPPRESSED_ADMIN_NODE_IDS
+                // is a Set.of(...) whose contains(null) throws NPE — guard the id.
+                if (node instanceof DBNDatabaseFolder adminFolder && !SMUtils.isRMAdmin(session)) {
+                    String adminMetaId = adminFolder.getMeta() == null ? null : adminFolder.getMeta().getId();
+                    if (adminMetaId != null && SUPPRESSED_ADMIN_NODE_IDS.contains(adminMetaId)) {
+                        continue;
+                    }
                 }
                 if (!CommonUtils.toBoolean(onlyFolders) || node instanceof DBNContainer) {
                     // Skip connections which are not supported in CB
