@@ -41,6 +41,7 @@ public class FilesFolder implements DBSObject, DBSObjectContainer {
         return name;
     }
 
+    @NotNull
     @Property(viewable = true, order = 2)
     public String getPath() {
         return path;

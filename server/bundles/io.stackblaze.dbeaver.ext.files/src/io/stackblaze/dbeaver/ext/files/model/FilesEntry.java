@@ -55,6 +55,7 @@ public class FilesEntry implements DBSObject, DBSDataContainer {
         return size;
     }
 
+    @NotNull
     @Property(viewable = true, order = 3)
     public String getPath() {
         return path;

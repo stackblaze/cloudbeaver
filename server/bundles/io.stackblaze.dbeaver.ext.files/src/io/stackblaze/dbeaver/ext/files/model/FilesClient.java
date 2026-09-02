@@ -1,6 +1,7 @@
 package io.stackblaze.dbeaver.ext.files.model;
 
 import org.jkiss.code.NotNull;
+import org.jkiss.code.Nullable;
 import org.jkiss.dbeaver.DBException;
 
 import java.net.URI;
@@ -25,7 +26,7 @@ public class FilesClient {
     private final String base;
     private final String token;
 
-    public FilesClient(@NotNull String host, int port, String token) {
+    public FilesClient(@NotNull String host, int port, @Nullable String token) {
         this.base = "http://" + host + ":" + port;
         this.token = token == null ? "" : token;
     }
@@ -41,7 +42,9 @@ public class FilesClient {
         int idx = 0;
         while (true) {
             int nameAt = body.indexOf("\"name\"", idx);
-            if (nameAt < 0) break;
+            if (nameAt < 0) {
+                break;
+            }
             String name = jsonString(body, nameAt);
             int typeAt = body.indexOf("\"type\"", nameAt);
             String type = typeAt >= 0 ? jsonString(body, typeAt) : "file";
@@ -64,7 +67,8 @@ public class FilesClient {
         return body;
     }
 
-    private String request(String pathAndQuery, boolean allowEmpty) throws DBException {
+    @NotNull
+    private String request(@NotNull String pathAndQuery, boolean allowEmpty) throws DBException {
         try {
             HttpRequest.Builder b = HttpRequest.newBuilder()
                 .uri(URI.create(base + pathAndQuery))
@@ -92,30 +96,50 @@ public class FilesClient {
         }
     }
 
-    private static String enc(String path) {
+    @NotNull
+    private static String enc(@Nullable String path) {
         return URLEncoder.encode(path == null || path.isEmpty() ? "/" : path, StandardCharsets.UTF_8);
     }
 
-    private static String jsonString(String json, int keyAt) {
-        if (keyAt < 0) return "";
+    @NotNull
+    private static String jsonString(@NotNull String json, int keyAt) {
+        if (keyAt < 0) {
+            return "";
+        }
         int colon = json.indexOf(':', keyAt);
-        if (colon < 0) return "";
+        if (colon < 0) {
+            return "";
+        }
         int q1 = json.indexOf('"', colon + 1);
-        if (q1 < 0) return "";
+        if (q1 < 0) {
+            return "";
+        }
         int q2 = json.indexOf('"', q1 + 1);
-        if (q2 < 0) return "";
+        if (q2 < 0) {
+            return "";
+        }
         return json.substring(q1 + 1, q2);
     }
 
-    private static long jsonLong(String json, int keyAt) {
-        if (keyAt < 0) return 0;
+    private static long jsonLong(@NotNull String json, int keyAt) {
+        if (keyAt < 0) {
+            return 0;
+        }
         int colon = json.indexOf(':', keyAt);
-        if (colon < 0) return 0;
+        if (colon < 0) {
+            return 0;
+        }
         int i = colon + 1;
-        while (i < json.length() && (json.charAt(i) == ' ' || json.charAt(i) == '\n')) i++;
+        while (i < json.length() && (json.charAt(i) == ' ' || json.charAt(i) == '\n')) {
+            i++;
+        }
         int j = i;
-        while (j < json.length() && (Character.isDigit(json.charAt(j)) || json.charAt(j) == '-')) j++;
-        if (j == i) return 0;
+        while (j < json.length() && (Character.isDigit(json.charAt(j)) || json.charAt(j) == '-')) {
+            j++;
+        }
+        if (j == i) {
+            return 0;
+        }
         try {
             return Long.parseLong(json.substring(i, j));
         } catch (NumberFormatException e) {

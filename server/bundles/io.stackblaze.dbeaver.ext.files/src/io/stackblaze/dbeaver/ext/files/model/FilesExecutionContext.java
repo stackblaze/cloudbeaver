@@ -13,7 +13,7 @@ public class FilesExecutionContext extends AbstractExecutionContext<FilesDataSou
 
     private volatile boolean connected = true;
 
-    public FilesExecutionContext(@NotNull FilesDataSource dataSource, String purpose) {
+    public FilesExecutionContext(@NotNull FilesDataSource dataSource, @NotNull String purpose) {
         super(dataSource, purpose);
     }
 

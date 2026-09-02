@@ -36,16 +36,19 @@ public class FilesDataSourceInfo extends AbstractDataSourceInfo {
         return "1.x";
     }
 
+    @NotNull
     @Override
     public String getSchemaTerm() {
         return "Folder";
     }
 
+    @NotNull
     @Override
     public String getProcedureTerm() {
         return "";
     }
 
+    @NotNull
     @Override
     public String getCatalogTerm() {
         return "Volume";

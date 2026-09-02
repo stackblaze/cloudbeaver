@@ -135,6 +135,7 @@ public class FilesDataSource extends AbstractDataSource
         try {
             executionContext.close();
         } catch (Exception ignored) {
+            // the context is already gone
         }
     }
 

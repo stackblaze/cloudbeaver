@@ -12,6 +12,7 @@ public class FilesExclusiveResource implements DBPExclusiveResource {
     private final Set<String> tasks = new HashSet<>();
     private boolean locked;
 
+    @NotNull
     @Override
     public Object acquireExclusiveLock() {
         synchronized (mutex) {

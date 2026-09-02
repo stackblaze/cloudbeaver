@@ -40,6 +40,7 @@ public class FilesSQLDialect extends BasicSQLDialect {
         return false;
     }
 
+    @NotNull
     @Override
     public String[] getExecuteKeywords() {
         return new String[0];
@@ -51,7 +52,7 @@ public class FilesSQLDialect extends BasicSQLDialect {
     }
 
     @SuppressWarnings("unused")
-    public void initDriverSettings(DBCExecutionContext context) {
+    public void initDriverSettings(@NotNull DBCExecutionContext context) {
         // no-op
     }
 }
