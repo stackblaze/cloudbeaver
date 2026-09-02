@@ -37,7 +37,7 @@ public class FilesClient {
 
     @NotNull
     public List<Entry> list(@NotNull String path) throws DBException {
-        String body = request("/ls?path=" + enc(path), false);
+        String body = request("/cgi-bin/api?op=ls&path=" + enc(path) + tokenParam(), false);
         List<Entry> out = new ArrayList<>();
         int idx = 0;
         while (true) {
@@ -60,7 +60,7 @@ public class FilesClient {
 
     @NotNull
     public String cat(@NotNull String path, int maxChars) throws DBException {
-        String body = request("/cat?path=" + enc(path), false);
+        String body = request("/cgi-bin/api?op=cat&path=" + enc(path) + tokenParam(), false);
         if (body.length() > maxChars) {
             return body.substring(0, maxChars);
         }
@@ -94,6 +94,20 @@ public class FilesClient {
         } catch (Exception e) {
             throw new DBException("Failed to reach volume files at " + base + ": " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Token as a query parameter. busybox httpd reliably passes QUERY_STRING to
+     * CGI but consumes the Authorization header for its own Basic auth, so the
+     * sidecar reads the token from ?t=. The Bearer header is still sent (below)
+     * as a harmless fallback.
+     */
+    @NotNull
+    private String tokenParam() {
+        if (token.isEmpty()) {
+            return "";
+        }
+        return "&t=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
     }
 
     @NotNull
