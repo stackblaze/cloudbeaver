@@ -76,6 +76,7 @@
         <driver id="redis:redis"/>
         <driver id="s3:rustfs"/>
         <driver id="mongodb:mongodb"/>
+        <driver id="files:http"/>
     </extension>
 
 
