@@ -67,6 +67,16 @@ import java.util.*;
 public class WebServiceNavigator implements DBWServiceNavigator {
     private static final List<WebNavigatorNodeInfo> EMPTY_NODE_LIST = Collections.emptyList();
 
+    // Stackblaze: server-administration + System Info navigator folders that a
+    // non-admin (reverse-proxy tenant) session must never see — a tenant DB
+    // role can't read mysql.user / server status, so these nodes only ever
+    // error ("SELECT command denied ... for table `mysql`.`user`"). Matched by
+    // the upstream driver's STABLE navigator meta ids, not localized labels.
+    // MySQL/MariaDB: folderUser (Users), folderAdmin (Administer), folderInfo
+    // (System Info). RM admins keep the full tree. Extend for other engines.
+    private static final Set<String> SUPPRESSED_ADMIN_NODE_IDS =
+        Set.of("folderUser", "folderAdmin", "folderInfo");
+
     public static final String ROOT_DATABASES = "databases";
 
     @Override
@@ -117,6 +127,13 @@ public class WebServiceNavigator implements DBWServiceNavigator {
                 }
                 if (node instanceof DBNDatabaseFolder folderNode && CommonUtils.isEmpty(folderNode.getMeta().getChildren(null))) {
                     // Skip empty folders. Folder may become empty if their nested elements are provided by UI plugins.
+                    continue;
+                }
+                // Stackblaze: hide server-admin / System Info folders from tenant
+                // (non-RM-admin) sessions — they error on a scoped DB role.
+                if (node instanceof DBNDatabaseFolder adminFolder
+                    && !SMUtils.isRMAdmin(session)
+                    && SUPPRESSED_ADMIN_NODE_IDS.contains(adminFolder.getMeta().getId())) {
                     continue;
                 }
                 if (!CommonUtils.toBoolean(onlyFolders) || node instanceof DBNContainer) {
