@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+    <extension point="org.jkiss.dbeaver.dataSourceProvider">
+        <datasource
+                class="io.stackblaze.dbeaver.ext.mongodb.MongoDataSourceProvider"
+                description="Native MongoDB / FerretDB / DocumentDB connector (Stackblaze)"
+                id="mongodb"
+                label="MongoDB"
+                icon="icons/mongodb_icon.png"
+                dialect="mongodb">
+
+            <tree path="mongodb" label="MongoDB data source">
+                <items label="Database" path="database" property="databases" icon="#database">
+                    <items label="Collection" path="collection" property="collections" icon="#table">
+                    </items>
+                </items>
+            </tree>
+
+            <drivers managable="true">
+                <driver
+                        id="mongodb"
+                        label="MongoDB"
+                        icon="icons/mongodb_icon.png"
+                        iconBig="icons/mongodb_icon_big.png"
+                        category="NoSQL"
+                        description="Native MongoDB / FerretDB / DocumentDB (official Java driver)"
+                        categories="nosql,mongodb,ferretdb,documentdb"
+                        webURL="https://www.mongodb.com/"
+                        defaultPort="27017"
+                        defaultDatabase=""
+                        defaultUser=""
+                        sampleURL="mongodb://{host}:{port}/{database}"
+                        supportedConfigurationTypes="MANUAL,URL"
+                        promotesSingleConnection="true">
+                    <file type="jar" path="maven:/org.mongodb:mongodb-driver-sync:RELEASE[5.6.1]" bundle="!drivers.mongodb"/>
+                    <file type="jar" path="drivers/mongodb" bundle="drivers.mongodb"/>
+                    <property id="authSource" label="Auth database" type="string" defaultValue="admin"/>
+                    <parameter name="supports-references" value="false"/>
+                    <parameter name="supports-indexes" value="false"/>
+                    <parameter name="supports-stored-code" value="false"/>
+                </driver>
+            </drivers>
+        </datasource>
+    </extension>
+
+    <extension point="org.jkiss.dbeaver.sqlDialect">
+        <dialect
+                id="mongodb"
+                label="MongoDB"
+                class="io.stackblaze.dbeaver.ext.mongodb.model.MongoSQLDialect"
+                description="MongoDB / FerretDB (collection browsing)"
+                icon="icons/mongodb_icon.png"/>
+    </extension>
+</plugin>
