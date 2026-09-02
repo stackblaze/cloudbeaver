@@ -18,7 +18,11 @@ import org.jkiss.dbeaver.model.meta.Property;
 import org.jkiss.dbeaver.model.struct.DBSDataContainer;
 import org.jkiss.dbeaver.model.struct.DBSObject;
 
-/** A file on the leftover volume. Data tab shows name, size, and a text preview. */
+/**
+ * A file on the leftover volume. Data tab shows name, size, a small truncated
+ * text preview, and a "content" LOB column for the real byte-exact view/
+ * download (opened lazily via the grid's content panel).
+ */
 public class FilesEntry implements DBSObject, DBSDataContainer {
 
     private static final Log log = Log.getLog(FilesEntry.class);
@@ -110,8 +114,10 @@ public class FilesEntry implements DBSObject, DBSDataContainer {
             resultSet.addColumn("name", DBPDataKind.STRING);
             resultSet.addColumn("size", DBPDataKind.NUMERIC);
             resultSet.addColumn("preview", DBPDataKind.STRING);
+            resultSet.addColumn("content", DBPDataKind.CONTENT);
             String preview = dataSource.client().cat(path, FilesConstants.PREVIEW_CHARS);
-            resultSet.addRow(name, size, preview);
+            FilesContentValue content = new FilesContentValue(dataSource, path, size);
+            resultSet.addRow(name, size, preview, content);
             dataReceiver.fetchStart(session, resultSet, firstRow, maxRows);
             long rows = 0;
             while (resultSet.nextRow()) {

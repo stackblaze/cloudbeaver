@@ -58,13 +58,22 @@ public class FilesClient {
         return out;
     }
 
+    /** Small text preview for the grid cell. Server-side cap is chars*4 (UTF-8 worst case); truncated again here. */
     @NotNull
     public String cat(@NotNull String path, int maxChars) throws DBException {
-        String body = request("/cgi-bin/api?op=cat&path=" + enc(path) + tokenParam(), false);
+        long byteCap = (long) maxChars * 4;
+        String body = request(
+            "/cgi-bin/api?op=cat&path=" + enc(path) + "&max=" + byteCap + tokenParam(), false);
         if (body.length() > maxChars) {
             return body.substring(0, maxChars);
         }
         return body;
+    }
+
+    /** Full, byte-exact content for view/download — used only once a cell's LOB panel is opened. */
+    @NotNull
+    public byte[] catBytes(@NotNull String path, long maxBytes) throws DBException {
+        return requestBytes("/cgi-bin/api?op=cat&path=" + enc(path) + "&max=" + maxBytes + tokenParam());
     }
 
     @NotNull
@@ -86,6 +95,31 @@ public class FilesClient {
                 throw new DBException("Empty response from volume files " + pathAndQuery);
             }
             return body;
+        } catch (DBException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DBException("Volume files request interrupted", e);
+        } catch (Exception e) {
+            throw new DBException("Failed to reach volume files at " + base + ": " + e.getMessage(), e);
+        }
+    }
+
+    @NotNull
+    private byte[] requestBytes(@NotNull String pathAndQuery) throws DBException {
+        try {
+            HttpRequest.Builder b = HttpRequest.newBuilder()
+                .uri(URI.create(base + pathAndQuery))
+                .timeout(Duration.ofSeconds(60))
+                .GET();
+            if (!token.isEmpty()) {
+                b.header("Authorization", "Bearer " + token);
+            }
+            HttpResponse<byte[]> res = http.send(b.build(), HttpResponse.BodyHandlers.ofByteArray());
+            if (res.statusCode() >= 400) {
+                throw new DBException("Volume files HTTP " + res.statusCode() + " for " + pathAndQuery);
+            }
+            return res.body() == null ? new byte[0] : res.body();
         } catch (DBException e) {
             throw e;
         } catch (InterruptedException e) {
