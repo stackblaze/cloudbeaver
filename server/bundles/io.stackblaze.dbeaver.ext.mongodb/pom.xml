@@ -14,13 +14,32 @@
     <packaging>eclipse-plugin</packaging>
 
     <properties>
-        <mongodb.driver.version>5.6.1</mongodb.driver.version>
+        <mongodb.driver.version>5.8.0</mongodb.driver.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-sync</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+        <!-- Pin core + bson explicitly: a parent dependencyManagement manages
+             mongodb-driver-core/bson to 5.8.0, so without these the transitives
+             land at 5.8.0 while sync stays 5.6.1 -> NoSuchMethodError on
+             OperationContext.<init> at connect. All four must be one version. -->
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-core</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>bson</artifactId>
+            <version>${mongodb.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>bson-record-codec</artifactId>
             <version>${mongodb.driver.version}</version>
         </dependency>
     </dependencies>

@@ -38,7 +38,7 @@
                          pinned 5.6.1 mongodb-driver-core (drivers/mongodb) throws
                          NoSuchMethodError on OperationContext.<init> at connect. Every
                          mongo jar on the path must be the same version. -->
-                    <file type="jar" path="maven:/org.mongodb:mongodb-driver-sync:5.6.1" bundle="!drivers.mongodb"/>
+                    <file type="jar" path="maven:/org.mongodb:mongodb-driver-sync:5.8.0" bundle="!drivers.mongodb"/>
                     <file type="jar" path="drivers/mongodb" bundle="drivers.mongodb"/>
                     <property id="authSource" label="Auth database" type="string" defaultValue="admin"/>
                     <property id="authMechanism" label="Auth mechanism (scram-sha-256 | scram-sha-1 | plain)" type="string" defaultValue="scram-sha-256"/>
