@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+    <extension point="org.jkiss.dbeaver.dataSourceProvider">
+        <datasource
+                class="io.stackblaze.dbeaver.ext.files.FilesDataSourceProvider"
+                description="Browse a leftover volume over HTTP (Stackblaze)"
+                id="files"
+                label="Files"
+                dialect="files">
+
+            <tree path="files" label="Volume">
+                <items label="Item" path="item" property="items" icon="#folder">
+                    <items label="Item" path="item" property="items" icon="#document"/>
+                </items>
+            </tree>
+
+            <drivers managable="true">
+                <driver
+                        id="http"
+                        label="Volume files"
+                        category="Files"
+                        description="HTTP file listing for leftover Kubernetes volumes"
+                        categories="files,volume,storage"
+                        webURL="https://stackblaze.com/"
+                        defaultPort="8080"
+                        defaultUser=""
+                        sampleURL="http://{host}:{port}"
+                        supportedConfigurationTypes="MANUAL,URL"
+                        promotesSingleConnection="true">
+                    <parameter name="supports-references" value="false"/>
+                    <parameter name="supports-indexes" value="false"/>
+                    <parameter name="supports-stored-code" value="false"/>
+                </driver>
+            </drivers>
+        </datasource>
+    </extension>
+
+    <extension point="org.jkiss.dbeaver.sqlDialect">
+        <dialect
+                id="files"
+                label="Files"
+                class="io.stackblaze.dbeaver.ext.files.model.FilesSQLDialect"
+                description="Volume file browsing"/>
+    </extension>
+</plugin>

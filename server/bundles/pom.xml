@@ -35,6 +35,7 @@
         <module>io.stackblaze.dbeaver.ext.redis</module>
         <module>io.stackblaze.dbeaver.ext.s3</module>
         <module>io.stackblaze.dbeaver.ext.mongodb</module>
+        <module>io.stackblaze.dbeaver.ext.files</module>
 
         <module>io.cloudbeaver.product.ce</module>
     </modules>

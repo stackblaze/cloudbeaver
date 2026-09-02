@@ -46,6 +46,7 @@
     <plugin id="io.stackblaze.dbeaver.ext.redis" version="0.0.0"/>
     <plugin id="io.stackblaze.dbeaver.ext.s3" version="0.0.0"/>
     <plugin id="io.stackblaze.dbeaver.ext.mongodb" version="0.0.0"/>
+    <plugin id="io.stackblaze.dbeaver.ext.files" version="0.0.0"/>
 
     <!-- Extra plugins -->
     <plugin id="org.jkiss.dbeaver.data.office" version="0.0.0"/>
