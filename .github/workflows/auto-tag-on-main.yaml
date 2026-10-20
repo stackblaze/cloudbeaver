@@ -10,7 +10,9 @@ on:
 
 jobs:
   tag:
-    runs-on: [self-hosted, cloudbeaver]
+    # GitHub-hosted (stackblaze/region-provisioner#170): only pushes a git tag.
+    if: github.repository == 'stackblaze/cloudbeaver'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
