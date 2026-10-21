@@ -22,6 +22,11 @@ concurrency:
 
 jobs:
   deploy:
+    # Needs kubectl + the prod kubeconfig, so it stays on the self-hosted
+    # cloudbeaver runner, but only for release / manual dispatch in
+    # stackblaze/cloudbeaver, never for a fork or a pull request
+    # (stackblaze/region-provisioner#170).
+    if: github.event_name != 'pull_request' && github.repository == 'stackblaze/cloudbeaver'
     runs-on: [self-hosted, cloudbeaver]
     permissions:
       contents: read
