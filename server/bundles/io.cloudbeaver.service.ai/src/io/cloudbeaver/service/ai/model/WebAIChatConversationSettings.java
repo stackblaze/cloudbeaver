@@ -37,21 +37,31 @@ public class WebAIChatConversationSettings {
     private final AIContextSettingsChatConversation settings;
     @Nullable
     private final DBPProject project;
+    @NotNull
+    private final String conversationId;
 
     public WebAIChatConversationSettings(
         @NotNull WebSession webSession,
         @NotNull AIContextSettingsChatConversation settings,
-        @Nullable DBPDataSourceContainer container
+        @Nullable DBPDataSourceContainer container,
+        @NotNull String conversationId
     ) {
         this.webSession = webSession;
         this.settings = settings;
         this.project = container == null ? null : container.getProject();
+        this.conversationId = conversationId;
     }
 
+    /**
+     * Stackblaze: the real value (was hard-coded to true), so the UI asks for
+     * consent before the server refuses the prompt.
+     */
     public boolean isMetaTransferConfirmed() {
-        return true; //FIXME: we need to implement this
+        return settings.isMetaTransferConfirmed()
+            || WebAIUtils.isMetaTransferRemembered(webSession, conversationId);
     }
 
+    @Nullable
     public AIDatabaseScope getScope() {
         return settings.getScope();
     }

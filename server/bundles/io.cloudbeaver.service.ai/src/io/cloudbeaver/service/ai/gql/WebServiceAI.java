@@ -30,6 +30,7 @@ import io.cloudbeaver.service.ai.model.inputs.DataSourceId;
 import io.cloudbeaver.service.ai.model.inputs.WebAIChatConversationInput;
 import io.cloudbeaver.service.ai.model.inputs.WebAIConfigurationProfileInput;
 import io.cloudbeaver.service.ai.model.inputs.WebAiChatCompletionSettingsInput;
+import io.cloudbeaver.service.ai.stackblaze.StackblazeAI;
 import io.cloudbeaver.service.sql.WebSQLContextInfo;
 import io.cloudbeaver.service.sql.WebSQLProcessor;
 import io.cloudbeaver.utils.ServletAppUtils;
@@ -229,9 +230,18 @@ public class WebServiceAI implements DBWServiceAI {
 
                     AIFunctionContext fc = new AIFunctionContext(monitor, dbContext, new AIPromptGenerateSql());
                     AIMessage userMessage = AIMessage.userMessage(request);
+                    AIConfigurationProfile profile;
+                    if (StackblazeAI.isEnabled()) {
+                        // Stackblaze: bill this completion to the tenant that owns the connection.
+                        StackblazeAI.ensureDefaultProfile();
+                        DBPDataSourceContainer container = processor.getConnection().getDataSourceContainer();
+                        profile = StackblazeAI.turnProfile(webSession, container, "sql:" + container.getId());
+                    } else {
+                        profile = AISettingsManager.getStaticSettings().getDefaultConfiguration();
+                    }
                     AIAssistantResponse result = assistant.generateText(
                         monitor,
-                        AISettingsManager.getStaticSettings().getDefaultConfiguration(),
+                        profile,
                         fc,
                         List.of(userMessage)
                     );
@@ -674,6 +684,11 @@ public class WebServiceAI implements DBWServiceAI {
         }
         if (settingsInput.metaTransferConfirmed() != null) {
             settings.setMetaTransferConfirmed(settingsInput.metaTransferConfirmed());
+            if (Boolean.TRUE.equals(settingsInput.metaTransferConfirmed())) {
+                // Stackblaze: hold the consent for this conversation even if saving it
+                // on the shared connection fails below.
+                WebAIUtils.rememberMetaTransferConfirmed(webSession, conversation.getId().toString());
+            }
         }
         if (settingsInput.scope() != null) {
             settings.setScope(settingsInput.scope());

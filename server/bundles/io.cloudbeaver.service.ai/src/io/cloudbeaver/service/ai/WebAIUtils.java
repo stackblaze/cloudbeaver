@@ -23,6 +23,7 @@ import io.cloudbeaver.service.ai.model.WebAIMessage;
 import io.cloudbeaver.service.ai.model.WebAISendChatMessageInfo;
 import io.cloudbeaver.service.ai.model.WebAiChatResponseConsumer;
 import io.cloudbeaver.service.ai.model.events.WSAiChatMessageEvent;
+import io.cloudbeaver.service.ai.stackblaze.StackblazeAI;
 import io.cloudbeaver.utils.ServletAppUtils;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -54,6 +55,9 @@ import java.util.concurrent.CompletableFuture;
 public class WebAIUtils {
     private static final Log log = Log.getLog(WebAIUtils.class);
     private static final String AI_WAITING_ATTR = "ai.waiting.";
+    // Stackblaze: the user allowed metadata transfer for this conversation in this session.
+    // Kept even if persisting the consent on the (shared) connection fails.
+    private static final String AI_META_CONFIRMED_ATTR = "ai.metaConfirmed.";
     public static final String AI_CHAT_ATTR = "ai_chat";
     public static final String AI_CHAT_USER_ATTR = "ai_chat_user";
 
@@ -147,6 +151,16 @@ public class WebAIUtils {
             @Override
             protected IStatus run(@NotNull DBRProgressMonitor monitor) {
                 try {
+                    if (StackblazeAI.isEnabled()) {
+                        // Stackblaze: a fresh token per turn (prompt or function-call confirmation)
+                        // so Kubero's proxy bills the tenant that owns this connection.
+                        StackblazeAI.ensureDefaultProfile();
+                        conversation.setProfile(StackblazeAI.turnProfile(
+                            webSession,
+                            conversation.getDataSource(),
+                            conversation.getId().toString()
+                        ));
+                    }
                     AIChatResponseConsumer subscriber = new WebAiChatResponseConsumer(conversation, webSession, aiChatSession);
                     aiChatSession.processAICompletion(
                         monitor,
@@ -266,10 +280,12 @@ public class WebAIUtils {
         @NotNull AIChatConversation conversation,
         @NotNull AIMessage message
     ) throws DBException {
-        if (!isMetaTransferConfirmed(conversation)) {
-            throw new DBWebException("AI services restricted for '%s'. Please contact your administrator if you need it.".formatted(
-                conversation.getDataSource()));
+        if (!isMetaTransferConfirmed(webSession, aiChatSession, conversation)) {
+            throw new DBWebException(("AI chat for '%s' needs your permission to send this connection's metadata "
+                + "(schema, table and column names) to the AI assistant. Send the message again and allow it when asked.")
+                .formatted(conversation.getDataSource() == null ? "" : conversation.getDataSource().getName()));
         }
+        StackblazeAI.ensureDefaultProfile();
         AIChatMessage promptMessage;
         AIChatMessage result;
         synchronized (conversation) {
@@ -296,13 +312,33 @@ public class WebAIUtils {
         );
     }
 
-    private static boolean isMetaTransferConfirmed(@NotNull AIChatConversation conversation) {
-        DBPDataSourceContainer dataSourceContainer = conversation.getDataSource();
-        if (dataSourceContainer == null) {
+    /**
+     * Whether the user allowed sending metadata for this conversation: the
+     * conversation's settings (which start from the connection's saved consent)
+     * or a confirmation given in this session.
+     */
+    private static boolean isMetaTransferConfirmed(
+        @NotNull WebSession webSession,
+        @NotNull AIChatSession aiChatSession,
+        @NotNull AIChatConversation conversation
+    ) {
+        if (conversation.getDataSource() == null) {
             return true;
         }
-        AIContextSettingsDataSource dsSettings = new AIContextSettingsDataSource(dataSourceContainer);
-        return dsSettings.isMetaTransferConfirmed();
+        if (isMetaTransferRemembered(webSession, conversation.getId().toString())) {
+            return true;
+        }
+        AIContextSettingsChatConversation settings = getConversationSettings(aiChatSession, conversation);
+        return settings != null && settings.isMetaTransferConfirmed();
+    }
+
+    public static void rememberMetaTransferConfirmed(@NotNull WebSession webSession, @NotNull String conversationId) {
+        webSession.setAttribute(AI_META_CONFIRMED_ATTR + conversationId, Boolean.TRUE);
+    }
+
+    public static boolean isMetaTransferRemembered(@NotNull WebSession webSession, @NotNull String conversationId) {
+        Object value = webSession.getAttribute(AI_META_CONFIRMED_ATTR + conversationId);
+        return Boolean.TRUE.equals(value);
     }
 
 
