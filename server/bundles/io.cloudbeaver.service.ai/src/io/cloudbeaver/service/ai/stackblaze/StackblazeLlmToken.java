@@ -5,14 +5,15 @@ package io.cloudbeaver.service.ai.stackblaze;
 
 import com.google.gson.Gson;
 import org.jkiss.code.NotNull;
+import org.jkiss.code.Nullable;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Token CloudBeaver hands Kubero's model proxy as its "API key", one per AI turn.
@@ -46,11 +47,11 @@ public final class StackblazeLlmToken {
 
     @NotNull
     public static Map<String, Object> payload(
-        String userId,
-        String projectId,
-        String connectionId,
-        String connectionName,
-        String sessionId,
+        @Nullable String userId,
+        @Nullable String projectId,
+        @Nullable String connectionId,
+        @Nullable String connectionName,
+        @Nullable String sessionId,
         long expiresAtMillis
     ) {
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -80,7 +81,7 @@ public final class StackblazeLlmToken {
         }
     }
 
-    private static void putIfPresent(@NotNull Map<String, Object> payload, @NotNull String key, String value) {
+    private static void putIfPresent(@NotNull Map<String, Object> payload, @NotNull String key, @Nullable String value) {
         if (value != null && !value.isEmpty()) {
             payload.put(key, value);
         }

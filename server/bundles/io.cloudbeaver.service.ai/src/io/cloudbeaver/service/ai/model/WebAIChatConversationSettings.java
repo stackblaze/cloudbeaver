@@ -61,6 +61,7 @@ public class WebAIChatConversationSettings {
             || WebAIUtils.isMetaTransferRemembered(webSession, conversationId);
     }
 
+    @Nullable
     public AIDatabaseScope getScope() {
         return settings.getScope();
     }
