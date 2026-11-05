@@ -8,6 +8,16 @@
         </service>
     </extension>
 
+    <!-- Stackblaze: Kubero's model proxy (active only when STACKBLAZE_LLM_URL is set). -->
+    <extension point="com.dbeaver.ai.engine">
+        <completionEngine id="stackblaze"
+            label="Stackblaze"
+            icon="platform:/plugin/org.jkiss.dbeaver.model.ai/icons/engine_openai.svg"
+            class="io.cloudbeaver.service.ai.stackblaze.StackblazeAIEngine"
+            properties="io.cloudbeaver.service.ai.stackblaze.StackblazeAIProperties"
+            supportsFunctions="true"/>
+    </extension>
+
     <extension point="io.cloudbeaver.object.feature.provider">
         <featureProvider id="AIFeatureProvider" class="io.cloudbeaver.service.ai.WebAIFeatureProvider"/>
     </extension>

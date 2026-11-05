@@ -93,7 +93,12 @@ public class WebAIChatConversation {
         if (settings == null) {
             return null;
         }
-        return new WebAIChatConversationSettings(webSession, settings, conversation.getDataSource());
+        return new WebAIChatConversationSettings(
+            webSession,
+            settings,
+            conversation.getDataSource(),
+            conversation.getId().toString()
+        );
     }
 
     @NotNull
