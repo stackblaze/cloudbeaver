@@ -8,6 +8,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.cloudbeaver.DBWebException;
+import io.cloudbeaver.WebSessionGlobalProjectImpl;
+import io.cloudbeaver.model.WebConnectionInfo;
 import io.cloudbeaver.model.session.WebSession;
 import io.cloudbeaver.service.ai.WebAIFeatureProvider;
 import io.cloudbeaver.utils.ServletAppUtils;
@@ -26,6 +28,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Stackblaze mode: on when {@code STACKBLAZE_LLM_URL} and {@code STACKBLAZE_LLM_SECRET}
@@ -46,6 +50,11 @@ public final class StackblazeAI {
     public static final String ENGINE_ID = "stackblaze";
     public static final String PROFILE_ID = "stackblaze";
     public static final String PROFILE_NAME = "Stackblaze";
+
+    /** Shown when a turn has no connection to charge. */
+    public static final String NO_CONNECTION_MESSAGE =
+        "Pick a database in the connection list above. AI usage is charged to the workspace that owns it.";
+    private static final String DUCKDB_NAME_SUFFIX = " \u00b7 SQL (DuckDB)";
 
     private static final int DEFAULT_CONTEXT_WINDOW = 128_000;
     private static final long CATALOG_RETRY_MS = 60_000L;
@@ -120,8 +129,9 @@ public final class StackblazeAI {
         @Nullable DBPDataSourceContainer dataSource,
         @NotNull String sessionId
     ) throws DBWebException {
+        dataSource = billingConnection(webSession, dataSource);
         if (dataSource == null) {
-            throw new DBWebException("Open the AI chat from a database connection.");
+            throw new DBWebException(NO_CONNECTION_MESSAGE);
         }
         String secret = secret();
         if (secret == null) {
@@ -145,6 +155,47 @@ public final class StackblazeAI {
         profile.setEngineId(ENGINE_ID);
         profile.setConfiguration(properties);
         return profile;
+    }
+
+    /**
+     * The connection whose workspace pays for a turn: the chat's own connection,
+     * or, for a chat with "No connection", any shared connection the user can see
+     * when they all belong to one Stackblaze project ({@code <project>/<env>/<db>}).
+     * Null when there is nothing to charge or the choice would be a guess.
+     */
+    @Nullable
+    public static DBPDataSourceContainer billingConnection(
+        @NotNull WebSession webSession,
+        @Nullable DBPDataSourceContainer chosen
+    ) {
+        if (chosen != null) {
+            return chosen;
+        }
+        WebSessionGlobalProjectImpl shared = webSession.getGlobalProject();
+        if (shared == null) {
+            return null;
+        }
+        DBPDataSourceContainer first = null;
+        Set<String> projects = new HashSet<>();
+        for (WebConnectionInfo info : shared.getConnections()) {
+            DBPDataSourceContainer container = info.getDataSourceContainer();
+            if (!shared.isDataSourceAccessible(container)) {
+                continue;
+            }
+            String name = container.getName() == null ? "" : container.getName();
+            if (name.endsWith(DUCKDB_NAME_SUFFIX)) {
+                name = name.substring(0, name.length() - DUCKDB_NAME_SUFFIX.length());
+            }
+            String[] parts = name.split("/", -1);
+            if (parts.length != 3 || parts[0].isEmpty() || parts[1].isEmpty() || parts[2].isEmpty()) {
+                continue;
+            }
+            projects.add(parts[0]);
+            if (first == null) {
+                first = container;
+            }
+        }
+        return projects.size() == 1 ? first : null;
     }
 
     @Nullable
