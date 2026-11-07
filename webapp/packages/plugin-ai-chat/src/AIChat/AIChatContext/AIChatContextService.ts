@@ -37,6 +37,8 @@ export class AIChatContextService extends Bootstrap {
   }
 
   private context: IAIChatContextInfo | null = null;
+  /** Stackblaze: the user picked "No connection" themselves; don't pick one for them. */
+  private noContextChosen = false;
   private reactionDisposer: IReactionDisposer | null;
 
   constructor(
@@ -50,6 +52,7 @@ export class AIChatContextService extends Bootstrap {
     this.reactionDisposer = null;
 
     userInfoResource.onUserChange.addHandler(() => {
+      this.noContextChosen = false;
       this.setContext(null);
     });
 
@@ -63,9 +66,20 @@ export class AIChatContextService extends Bootstrap {
       }
     });
 
-    makeObservable<this, 'context'>(this, {
+    makeObservable<this, 'context' | 'noContextChosen'>(this, {
       context: observable,
+      noContextChosen: observable,
     });
+  }
+
+  get isNoContextChosen(): boolean {
+    return this.noContextChosen;
+  }
+
+  /** A choice made in the chat's connection list ("No connection" is null). */
+  chooseContext(context: IAIChatContextInfo | null): void {
+    this.noContextChosen = context === null;
+    this.setContext(context);
   }
 
   setContext(context: IAIChatContextInfo | null): void {
