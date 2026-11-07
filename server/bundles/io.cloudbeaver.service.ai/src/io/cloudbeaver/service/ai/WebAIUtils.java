@@ -285,6 +285,12 @@ public class WebAIUtils {
                 + "(schema, table and column names) to the AI assistant. Send the message again and allow it when asked.")
                 .formatted(conversation.getDataSource() == null ? "" : conversation.getDataSource().getName()));
         }
+        if (StackblazeAI.isEnabled()
+            && StackblazeAI.billingConnection(webSession, conversation.getDataSource()) == null) {
+            // Refuse here, not in the background job: an error event that beats this
+            // mutation's reply leaves the chat spinner on (the reply sets it back on).
+            throw new DBWebException(StackblazeAI.NO_CONNECTION_MESSAGE);
+        }
         StackblazeAI.ensureDefaultProfile();
         AIChatMessage promptMessage;
         AIChatMessage result;

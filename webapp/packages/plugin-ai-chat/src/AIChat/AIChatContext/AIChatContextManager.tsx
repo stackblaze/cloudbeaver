@@ -6,7 +6,7 @@
  * you may not use this file except in compliance with the License.
  */
 
-import type { ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import { observer } from 'mobx-react-lite';
 
 import { isNotNullDefined } from '@dbeaver/js-helpers';
@@ -63,14 +63,38 @@ export const AIChatContextManager = observer<Props>(function AIChatContextManage
 
   const value = aiChatContextService.currentContext?.connectionKey.connectionId ?? NO_CONTEXT_ID;
 
+  // Stackblaze: with no SQL editor open the chat starts on "No connection" and its
+  // tools have no database to read. Use the user's only connected connection (or
+  // their only connection), unless they picked "No connection" themselves.
+  const connected = connections.filter(c => c.connected);
+  let onlyConnection = connected.length === 1 ? connected[0] : undefined;
+
+  if (connected.length === 0 && connections.length === 1) {
+    onlyConnection = connections[0];
+  }
+
+  const canAutoPick = !aiChatContextService.currentContext && !aiChatContextService.isNoContextChosen;
+  const autoPickId = canAutoPick ? onlyConnection?.id : undefined;
+
+  useEffect(() => {
+    if (!autoPickId) {
+      return;
+    }
+    const connection = connectionInfoResource.data.find(c => c?.id === autoPickId);
+
+    if (connection) {
+      aiChatContextService.setContext({ connectionKey: createConnectionParam(connection) });
+    }
+  }, [autoPickId, aiChatContextService, connectionInfoResource]);
+
   function changeContext(contextId: string): void {
     if (contextId === NO_CONTEXT_ID) {
-      aiChatContextService.setContext(null);
+      aiChatContextService.chooseContext(null);
     } else {
       const connection = connectionInfoResource.data.find(c => c?.id === contextId);
 
       if (connection) {
-        aiChatContextService.setContext({ connectionKey: createConnectionParam(connection) });
+        aiChatContextService.chooseContext({ connectionKey: createConnectionParam(connection) });
       }
     }
   }
