@@ -63,7 +63,8 @@ data:
                 "s3:rustfs",
                 "duckdb:duckdb_jdbc",
                 "clickhouse:com_clickhouse",
-                "mongodb:mongodb"
+                "mongodb:mongodb",
+                "opensearch:opensearch_jdbc"
             ],
             resourceQuotas: {
                 dataExportFileSizeLimit: 10000000,

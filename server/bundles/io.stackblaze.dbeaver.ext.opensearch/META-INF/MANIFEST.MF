@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Stackblaze OpenSearch Driver
+Bundle-Vendor: Stackblaze
+Bundle-SymbolicName: io.stackblaze.dbeaver.ext.opensearch;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.jkiss.dbeaver.model;visibility:=reexport,
+ org.jkiss.dbeaver.registry;visibility:=reexport,
+ org.jkiss.dbeaver.ext.generic;visibility:=reexport
+Automatic-Module-Name: io.stackblaze.dbeaver.ext.opensearch

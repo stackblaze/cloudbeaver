@@ -24,6 +24,7 @@
         <resource name="drivers/redis"/>
         <resource name="drivers/minio"/>
         <resource name="drivers/mongodb"/>
+        <resource name="drivers/opensearch"/>
     </extension>
 
     <!-- Bundles  -->
@@ -50,6 +51,7 @@
         <bundle id="drivers.redis" label="Redis / Valkey drivers"/>
         <bundle id="drivers.minio" label="MinIO S3 drivers"/>
         <bundle id="drivers.mongodb" label="MongoDB drivers"/>
+        <bundle id="drivers.opensearch" label="OpenSearch drivers"/>
     </extension>
 
     <!-- Enabled drivers -->
@@ -76,6 +78,7 @@
         <driver id="redis:redis"/>
         <driver id="s3:rustfs"/>
         <driver id="mongodb:mongodb"/>
+        <driver id="opensearch:opensearch_jdbc"/>
     </extension>
 
 
