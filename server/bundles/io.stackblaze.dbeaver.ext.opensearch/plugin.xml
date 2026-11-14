@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<!--
+    OpenSearch through the generic JDBC provider, with the driver jars BUNDLED
+    (drivers/opensearch, built by server/drivers/opensearch).
+
+    Upstream DBeaver already declares generic:opensearch, but only with a
+    maven:/ file, i.e. a download on first connect. The fork never relies on
+    runtime driver downloads, and upstream plugin.xml lives in the dbeaver
+    checkout the Docker build clones, so the driver is declared here as its own
+    provider (parent="generic": generic tree, dialect and metadata), the same
+    shape upstream uses for Elasticsearch.
+
+    TLS: the add-on's HTTPS listener uses a per-cluster self-signed CA and
+    CloudBeaver may dial it through a 127.0.0.1 tunnel, so kubero-server passes
+    useSSL=true, trustSelfSigned=true and hostnameVerification=false as JDBC
+    connection properties (the driver's own names). Nothing insecure is baked
+    in as a driver default. trustSelfSigned accepts a certificate chain of
+    length 1, which is what the operator's HTTP listener serves (tls.crt holds
+    the leaf only).
+-->
+<plugin>
+    <extension point="org.jkiss.dbeaver.dataSourceProvider">
+        <datasource
+                class="org.jkiss.dbeaver.ext.generic.GenericDataSourceProviderBasic"
+                description="OpenSearch (SQL plugin over JDBC, Stackblaze)"
+                id="opensearch"
+                parent="generic"
+                label="OpenSearch"
+                icon="platform:/plugin/org.jkiss.dbeaver.ext.generic/icons/opensearch_icon.png"
+                dialect="generic">
+            <drivers managable="true">
+                <driver
+                        id="opensearch_jdbc"
+                        label="OpenSearch"
+                        class="org.opensearch.jdbc.Driver"
+                        icon="platform:/plugin/org.jkiss.dbeaver.ext.generic/icons/opensearch_icon.png"
+                        iconBig="platform:/plugin/org.jkiss.dbeaver.ext.generic/icons/opensearch_icon_big.png"
+                        sampleURL="jdbc:opensearch://[{scheme}://][{host}][:{port}]"
+                        defaultPort="9200"
+                        defaultDatabase=""
+                        defaultUser="admin"
+                        description="OpenSearch SQL JDBC driver (opensearch-project/sql-jdbc 1.4.0.1)"
+                        webURL="https://github.com/opensearch-project/sql-jdbc"
+                        supportedConfigurationTypes="MANUAL,URL"
+                        categories="fulltext,sql">
+                    <replace provider="generic" driver="opensearch"/>
+                    <file type="jar" path="maven:/org.opensearch.driver:opensearch-sql-jdbc:1.4.0.1" bundle="!drivers.opensearch"/>
+                    <file type="jar" path="drivers/opensearch" bundle="drivers.opensearch"/>
+                    <parameter name="read-only-data" value="true"/>
+                    <parameter name="read-only-meta-data" value="true"/>
+                    <parameter name="supports-references" value="false"/>
+                    <parameter name="supports-indexes" value="false"/>
+                    <parameter name="supports-stored-code" value="false"/>
+                </driver>
+            </drivers>
+        </datasource>
+    </extension>
+</plugin>

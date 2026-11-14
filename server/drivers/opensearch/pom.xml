@@ -1,0 +1,30 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>drivers.opensearch</artifactId>
+    <version>1.0.0</version>
+    <parent>
+        <groupId>io.cloudbeaver</groupId>
+        <artifactId>drivers</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../</relativePath>
+    </parent>
+    <packaging>pom</packaging>
+
+    <properties>
+        <deps.output.dir>opensearch</deps.output.dir>
+    </properties>
+
+    <dependencies>
+        <!-- OpenSearch SQL JDBC driver (opensearch-project/sql-jdbc, Apache-2.0).
+             1.4.0.1 is the latest release; it talks to the SQL plugin's
+             /_plugins/_sql?format=jdbc endpoint, which OpenSearch 3.x keeps.
+             Runtime deps (httpclient 4.5, jackson, aws-java-sdk-core for the
+             unused SigV4 auth path) come along through copy-dependencies. -->
+        <dependency>
+            <groupId>org.opensearch.driver</groupId>
+            <artifactId>opensearch-sql-jdbc</artifactId>
+            <version>1.4.0.1</version>
+        </dependency>
+    </dependencies>
+</project>

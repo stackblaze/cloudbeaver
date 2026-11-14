@@ -31,6 +31,7 @@
         <module>mysql</module>
         <module>mariadb</module>
         <module>mongodb</module>
+        <module>opensearch</module>
         <module>oracle</module>
         <module>postgresql</module>
         <module>redis</module>

@@ -74,6 +74,8 @@ scoped handoff and risks cross-tenant visibility for admin logins.
 | ClickHouse | `clickhouse:com_clickhouse` | upstream |
 | S3 (RustFS `Tenant`) | `s3:rustfs` | this fork — `io.stackblaze.dbeaver.ext.rustfs` |
 | DuckDB companion for S3 | `duckdb:duckdb_jdbc` | upstream (embedded; needs `enabledDrivers`) |
+| MongoDB / FerretDB / DocumentDB | `mongodb:mongodb` | this fork — `io.stackblaze.dbeaver.ext.mongodb` |
+| OpenSearch (`OpenSearchCluster`, HTTPS 9200) | `opensearch:opensearch_jdbc` | this fork — `io.stackblaze.dbeaver.ext.opensearch` declares it on the generic provider with the jars bundled from `server/drivers/opensearch` ([opensearch-project/sql-jdbc](https://github.com/opensearch-project/sql-jdbc) 1.4.0.1, Apache-2.0). Upstream `generic:opensearch` only downloads from Maven at connect. kubero-server passes `useSSL`, `trustSelfSigned`, `hostnameVerification=false` for the self-signed listener. Read-only. |
 
 The runtime gate wins over this file once a runtime config exists on the
 workspace — see [`deploy/k8s/ensure-drivers-enabled.mjs`](../../deploy/k8s/ensure-drivers-enabled.mjs).
